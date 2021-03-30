@@ -46,6 +46,7 @@ namespace llvm {
     typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<BasicBlock*> BBList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
+    
 
     class DFF {
 
@@ -87,6 +88,10 @@ namespace llvm {
         void setKill(BBVal kill);
         void setBoundary(bool direction, bool boundary_val, unsigned bitvec_size);
 
+        // methods to return the result
+        BBVal getIN();
+        BBVal getOUT();
+
         // function to print all results on convergence
         template<class A> 
         void printRes(std::map<A, unsigned> mapping, StringRef label1, StringRef label2);
@@ -96,7 +101,6 @@ namespace llvm {
 
         // overloaded print functions
         void print(BitVector b, Value *rev_mapping[]); 
-        void print(BitVector b, Expression *rev_mapping[]);
 
         // destructor for DFF
         ~DFF();
@@ -144,19 +148,6 @@ namespace llvm {
     }
 
   }
-
-
-    
-
-  // template<class A> 
-  // void DFF::print(BitVector b, A rev_mapping[]) {
-
-  //   for (int i=0; i<b.size(); i++) {
-
-  //     if (b[i])
-  //       rev_mapping[i]->dump();
-  //   }
-  // }
 }
 
 #endif
