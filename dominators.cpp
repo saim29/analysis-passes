@@ -8,6 +8,55 @@ using namespace llvm;
 
 namespace {
 
+  class CFGLoop {
+
+    public:
+
+    CFGLoop(BasicBlock *h, BasicBlock *e) {
+
+      this->header = h;
+      this->end = e;
+
+      populate();
+
+    }
+
+    BasicBlock *header;
+    BasicBlock *end;
+
+    std::set<BasicBlock*> loopBody;
+
+    void populate() {
+
+      std::queue<BasicBlock*> bfs;
+      std::set<BasicBlock*> visited;
+
+      loopBody.insert(end);
+      bfs.push(end);
+
+      bool kill = false;
+      while (!kill) {
+
+        BasicBlock* curr = bfs.front();
+        bfs.pop();
+        visited.insert(curr);
+
+        for (BasicBlock *pred : predecessors(curr)) {
+
+          if (pred == header) {
+            kill = true;
+          }
+
+          if (visited.find(pred) == visited.end()) {
+
+            bfs.push(pred);
+            loopBody.insert(pred);
+          }
+        }
+      }
+    }
+  };
+
   BitVector transfer_function(BitVector out, BitVector use, BitVector def) {
 
     return set_union(out, use);
@@ -47,7 +96,7 @@ namespace {
       out = dff.getOUT();
 
       // print the results
-      dff.printRes<Value*>(BBMapping, "NULL", "NULL");      
+      //dff.printRes<Value*>(BBMapping, "NULL", "NULL");      
 
       return false;
     }
@@ -104,9 +153,81 @@ namespace {
 
     }
 
-    void getImmediateDominators() {
+    std::vector<CFGLoop> getCFGLoops(BasicBlock* entry) {
+      
+      std::stack<BasicBlock*> dfs;
+      std::set<BasicBlock*> visited;
+
+      std::vector<CFGLoop> loops;
+
+      dfs.push(entry);
+
+      while(!dfs.empty()) {
+
+        BasicBlock *curr = dfs.top();
+        dfs.pop();
+        visited.insert(curr);
+
+        for (BasicBlock *succ : successors(curr)) {
+
+          if (visited.find(succ) == visited.end()) {
+
+            dfs.push(succ);
+
+          } else {
+
+            if (dominates(succ, curr)) {
+
+              //loop header succ, loop end curr;
+              CFGLoop loop(succ, curr);
+              loops.push_back(loop);
+            }
+
+          }
+
+        }
+      }
+
+    }
 
 
+    void getImmediateDominators(Function &F) {
+
+      BasicBlock *entry = &F.getEntryBlock();
+      for (BasicBlock &B :F) {
+
+        immediateDominators[&B] = entry;
+
+        std::queue<BasicBlock*> bfs;
+        std::set<BasicBlock*> visited;
+
+        bfs.push(&B);
+        while (!bfs.empty()) {
+
+          BasicBlock* curr = bfs.front();
+          bfs.pop();
+
+          visited.insert(&B);
+
+          for (BasicBlock *pred : predecessors(curr)) {
+
+            if (dominates(pred, curr) && dominates(immediateDominators[curr], pred)) {
+
+              immediateDominators[curr] = pred;
+
+            }
+
+            if (visited.find(curr) == visited.end()) {
+
+              bfs.push(pred);
+
+            }
+
+          }
+
+        }
+
+      }
 
     }
 
@@ -125,4 +246,5 @@ namespace {
 
   char dominators::ID = 0;
   RegisterPass<dominators> X("dominators", "ECE 5984 dominators");
+
 }

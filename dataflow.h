@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <queue>
+#include <stack>
 #include <vector>
 
 #include "llvm/IR/Instructions.h"
