@@ -97,9 +97,6 @@ namespace llvm {
         template<class A> 
         void printRes(std::map<A, unsigned> mapping, StringRef label1, StringRef label2);
 
-        // template<class A> 
-        // void print(BitVector b, A rev_mapping[]);
-
         // overloaded print functions
         void print(BitVector b, Value *rev_mapping[]); 
 
@@ -149,6 +146,8 @@ namespace llvm {
     }
 
   }
+
+
 }
 
 #endif

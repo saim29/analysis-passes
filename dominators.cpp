@@ -79,7 +79,7 @@ namespace {
       unsigned size_bitvec = BBMapping.size();
 
       //initialize data flow framework
-      DFF dff(&F, false, INTERSECTION,  size_bitvec, &transfer_function, true);
+      DFF dff(&F, false, INTERSECTION, size_bitvec, &transfer_function, false);
 
       // compute use and def sets here
       populate_add_and_sub(F);
@@ -96,7 +96,25 @@ namespace {
       out = dff.getOUT();
 
       // print the results
-      //dff.printRes<Value*>(BBMapping, "NULL", "NULL");      
+      dff.printRes<Value*>(BBMapping, "ADD", "SUB");
+
+      std::vector<CFGLoop> loops = getCFGLoops(&F.getEntryBlock());
+      getImmediateDominators(F);
+
+      outs() << "Number of Loops Found: " << loops.size() << "\n";
+      outs() << "Immediate Dominators For Loops: \n";
+      for (auto loop : loops) {
+
+        outs() << "\nLoop: " << loop.header->getName() << "\n";
+
+        for (auto bb: loop.loopBody) {
+
+          outs() << bb->getName() << ":   " << immediateDominators[bb]->getName() << "\n";
+
+
+        }
+
+      }
 
       return false;
     }
@@ -111,11 +129,8 @@ namespace {
 
       for (BasicBlock &B: F) {
 
-        if (BBMapping.find(&B) == BBMapping.end()) {
           BBMapping.insert({&B, ind});
-        }
-
-        ind++;
+          ind = ind + 1;
 
       }
     }
@@ -123,14 +138,14 @@ namespace {
     void populate_add_and_sub(Function &F) {
 
       int size = BBMapping.size();
-      
+
       for (BasicBlock &B : F) {
 
-        BitVector bvec = BitVector(0, false);
+        BitVector bvec(size, false);
 
         sub.insert({&B, bvec});
 
-        unsigned ind = bvec[BBMapping[&B]];
+        unsigned ind = BBMapping[&B];
 
         bvec[ind] = 1;
         add.insert({&B, bvec});
@@ -188,8 +203,9 @@ namespace {
         }
       }
 
-    }
+      return loops;
 
+    }
 
     void getImmediateDominators(Function &F) {
 

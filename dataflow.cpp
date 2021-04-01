@@ -15,6 +15,9 @@ namespace llvm {
 
     BitVector init_val = BitVector(bitvec_size, boundary_val);
 
+    //added for dominators
+    // init_val[0] = 1;
+
     if(direction == 0) { // Forwards
       out[&F->getEntryBlock()] = init_val;
       out_entry = init_val;
@@ -295,6 +298,14 @@ namespace llvm {
     outs() << "Convergence: " << numIter << " iterations" <<"\n";
   }
 
+
+
+
+
+
+
+
+
   //overloaded print functions. Must be defined by analysis specific classes
   void DFF::print(BitVector b, Value *rev_mapping[]) {
     for (int i=0; i<b.size(); i++) {
@@ -305,6 +316,13 @@ namespace llvm {
 
     outs () << "\n";
   }
+
+
+
+
+
+
+
 
   // definitions of set operations
   BitVector set_union(BitVector b1, BitVector b2) {
