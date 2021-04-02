@@ -32,95 +32,89 @@ namespace {
             bvec_mapping.insert({&I, ind});
             ind++;
 
+
           }
         }
       }
     }
 
-    void populate_lhs(Function &F) {
+    BitVector populate_lhs(BasicBlock *B) {
 
-      for (BasicBlock &B : F) {
+      int size = bvec_mapping.size();
+      BitVector b(size, false);
+      
 
-        int size = bvec_mapping.size();
-        BitVector b(size, false);
-        lhs.insert({&B, b});
+      for (Instruction &I : *B) {
 
-        for (Instruction &I : B) {
+        if (I.isUsedInBasicBlock(B) || I.isUsedOutsideOfBlock(B)) {
 
-          if (I.isUsedInBasicBlock(&B) || I.isUsedOutsideOfBlock(&B)) {
+          unsigned ind = bvec_mapping[&I];
+          b[ind] = 1;
 
-            unsigned ind = bvec_mapping[&I];
-            lhs[&B][ind] = 1;
-
-          }           
-        }
-      }    
+        }           
+      } 
+      return b;
     }
 
-    void populate_rhs(Function &F) {
+    BitVector populate_rhs(BasicBlock *B) {
 
-      for (BasicBlock &B : F) {
 
-        int size = bvec_mapping.size();
-        BitVector b(size, false);
-        lhs.insert({&B, b});
 
-        for (Instruction &I : B) {
+      int size = bvec_mapping.size();
+      BitVector b(size, false);
 
-          if (I.isUsedInBasicBlock(&B) || I.isUsedOutsideOfBlock(&B)) {
 
-            //do not process function calls
-            if (isa<CallInst>(&I))
-              continue;
+      for (Instruction &I : *B) {
 
-            // go over instruction args
-            for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+        if (I.isUsedInBasicBlock(B) || I.isUsedOutsideOfBlock(B)) {
 
-              Value* val = *op;
-                
-              unsigned ind = bvec_mapping[val];
-              rhs[&B][ind] = 1;
+          //do not process function calls
+          if (isa<CallInst>(&I))
+            continue;
 
-            }
+          // go over instruction args
+          for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+
+            Value* val = *op;
+              
+            unsigned ind = bvec_mapping[val];
+            b[ind] = 1;
+
           }
         }
       }
+      return b;
     }
 
-    void populate_use(Function &F){
+    BitVector populate_use(BasicBlock *B){
 
-      for (BasicBlock &B : F) {
+      int size = bvec_mapping.size();
+      BitVector b(size, false);
 
-        int size = bvec_mapping.size();
-        BitVector b(size, false);
-        lhs.insert({&B, b});
 
-        for (Instruction &I : B) {
+      for (Instruction &I : *B) {
 
-          if (!I.isUsedInBasicBlock(&B) && !I.isUsedOutsideOfBlock(&B) || isa<CallInst>(&I)) {
+        if (!I.isUsedInBasicBlock(B) && !I.isUsedOutsideOfBlock(B) || isa<CallInst>(&I)) {
 
-            // go over instruction args
-            for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+          // go over instruction args
+          for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
 
-              Value* val = *op;
-                
-              unsigned ind = bvec_mapping[val];
-              use[&B][ind] = 1;
+            Value* val = *op;
+              
+            unsigned ind = bvec_mapping[val];
+            b[ind] = 1;
 
-            }
           }
         }
       }
-
+      return b;
     }
 
 
     virtual bool runOnFunction(Function& F) {
 
       map_indexes(F);
-      populate_lhs(F);
-      populate_rhs(F);
-      populate_use(F);
+      
 
       // initialize top element and bottom element according to the meetOp
       unsigned size_bitvec = bvec_mapping.size();
@@ -144,12 +138,24 @@ namespace {
 
       for (BasicBlock &B : F) {
 
-        BitVector bvec(size, false);
+        // Lets go through each instruction. 
+        // After everything is done, whatever is left is the relevant gen and kill for that block
 
-       
+        BitVector genSet(size, false);
+        BitVector killSet(size, false);
 
-        unsigned ind = bvec_mapping[&B];
+        BitVector lhs = populate_lhs(&B);
+        BitVector rhs = populate_rhs(&B);
+        BitVector use = populate_use(&B);
 
+        BitVector comp_rhs = rhs.flip();
+        genSet = set_intersection(lhs, comp_rhs);
+
+        // This is constant kill. Dependent kill will be updated during actual analysis
+        killSet = use;
+
+        gen.insert({&B, genSet});
+        kill.insert({&B, killSet});
 
       }
 
@@ -161,6 +167,10 @@ namespace {
     BBVal lhs;
     BBVal rhs;
     BBVal use;
+
+
+    BBVal gen;
+    BBVal kill;
 
   };
 
