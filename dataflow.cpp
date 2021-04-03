@@ -114,6 +114,23 @@ namespace llvm {
 
   }
 
+  void DFF::setLhs(BBVal glob_lhs) {
+
+    this->glob_lhs = lhs;
+
+  }
+
+  void DFF::setRhs(BBVal glob_rhs) {
+
+    this->glob_rhs = glob_rhs;
+
+  }
+  void DFF::setUse(BBVal glob_use) {
+
+    this->glob_use = glob_use;
+
+  }
+
   BBList DFF::getPossibleExitBlocks() {
 
     BBList ret;

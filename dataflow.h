@@ -67,6 +67,10 @@ namespace llvm {
 
         BBVal in; // in[B]
         BBVal out; // out[B]
+
+        BBVal glob_lhs; 
+        BBVal glob_rhs; 
+        BBVal glob_use;
         
         // gen and kill sets; Should be calculated by the specific analysis and passed to DFF
         BBVal gen;
@@ -95,6 +99,14 @@ namespace llvm {
         // methods to set specific sets
         void setGen(BBVal gen);
         void setKill(BBVal kill);
+
+        // Sets for faint variable analysis
+
+        void setLhs(BBVal glob_lhs);
+        void setRhs(BBVal glob_rhs);
+        void setUse(BBVal glob_use);
+
+
         void setBoundary(bool direction, bool boundary_val, unsigned bitvec_size);
 
         // methods to return the result
