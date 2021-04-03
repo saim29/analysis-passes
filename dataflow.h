@@ -42,11 +42,17 @@ namespace llvm {
 
     };
 
+    enum separability {
+        SEPARABLE,
+        NON_SEPARABLE
+    };
+
     typedef DenseMap <BasicBlock*, BitVector> BBVal;
     typedef std::map <Value*, unsigned> VMap;
     typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<BasicBlock*> BBList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
+    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector);
     
 
     class DFF {
@@ -57,6 +63,7 @@ namespace llvm {
 
         bool direction; // 0 forward; 1 backward
         meetOperator meetOp; // meet operator for preds or succ
+        separability sep; // separability condition for analysis like faint analysis
 
         BBVal in; // in[B]
         BBVal out; // out[B]
@@ -82,7 +89,8 @@ namespace llvm {
         public:
         // constructors for DFF
         DFF();
-        DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc, bool boundary_val);
+        DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+           bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
 
         // methods to set specific sets
         void setGen(BBVal gen);
@@ -99,6 +107,10 @@ namespace llvm {
 
         // overloaded print functions
         void print(BitVector b, Value *rev_mapping[]); 
+
+        // virtual depGen and depKill updaters
+        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out);
+        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out);
 
         // destructor for DFF
         ~DFF();

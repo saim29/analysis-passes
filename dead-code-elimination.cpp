@@ -10,15 +10,6 @@ namespace {
 
   BitVector transfer_function(BitVector out, BitVector gen, BitVector kill) {
 
-    // Pre-process kill to consider state of output vector (dependent kill)
-    unsigned size = kill.size();
-
-    for (int i=0; i<size; i++) {
-
-        if(!kill[i] && !out[i])
-          kill[i] = !kill[i];
-    }
-
     // Basic transfer function equaton here
     BitVector intermediate = set_diff(out, kill);
     return set_union(intermediate, gen);
@@ -26,11 +17,24 @@ namespace {
     
   }
 
+  BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out) {
+    return gen;
+  }
+
+  BitVector updateDepKill(BasicBlock *B, BitVector gen, BitVector out) {
+    return gen;
+  }
+
+
+  
+
   class dce : public FunctionPass {
 
   public:
     static char ID;
     dce() : FunctionPass(ID) { }
+
+  
 
     void map_indexes(Function &F) {
 
@@ -51,7 +55,7 @@ namespace {
       }
     }
 
-    BitVector populate_lhs(BasicBlock *B) {
+      BitVector populate_lhs(BasicBlock *B) {
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
@@ -123,7 +127,6 @@ namespace {
       return b;
     }
 
-
     virtual bool runOnFunction(Function& F) {
 
       map_indexes(F);
@@ -133,7 +136,7 @@ namespace {
       unsigned size_bitvec = bvec_mapping.size();
 
       //initialize data flow framework
-      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true);
+      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, NON_SEPARABLE, &updateDepGen, &updateDepKill);
 
       // compute use and def sets here
       populate_gen_kill(F);

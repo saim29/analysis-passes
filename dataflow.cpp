@@ -32,7 +32,8 @@ namespace llvm {
     }
   }
 
-  DFF::DFF(Function *F, bool direction, meetOperator meetOp,  unsigned bitvec_size, transferFuncTy transferFunc, bool boundary_val) {
+  DFF::DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+           bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill) {
 
     this->F = F;
     this->direction = direction;
@@ -40,6 +41,9 @@ namespace llvm {
     this->transferFunc = transferFunc;
     this->T.resize(bitvec_size, false);
     this->B.resize(bitvec_size, false);
+    this->sep = sep;
+    this->updateDepGen = depGen;
+    this->updateDepKill = depKill;
     
     // initialize top and bottom elements of the semi-lattice
     if (meetOp == INTERSECTION) {
@@ -188,10 +192,36 @@ namespace llvm {
 
           }
 
-          if (meetRes.size() > 0)
-            out[curr] = meetRes;
-          else
-            out[curr] = in_exit;
+          // Differentiate between separable and non-separable
+          if(sep == SEPARABLE) {
+            if (meetRes.size() > 0)
+              out[curr] = meetRes;
+            else
+              out[curr] = in_exit;
+          }
+
+          // Update the gen kill sets
+          else if(sep == NON_SEPARABLE) {
+            
+            // Store previous iteration
+            BitVector lastIterOut = out[curr];
+
+            // Calculate this iteration's out
+            if (meetRes.size() > 0)
+              out[curr] = meetRes;
+            else
+              out[curr] = in_exit;
+
+            // Check if lastIterOut and this iter out match. 
+            // No? Call analysis specific updater
+
+            if(out[curr] != lastIterOut) {
+              kill[curr] = updateDepKill(curr, kill[curr], out[curr]);
+              gen[curr] = updateDepGen(curr, gen[curr], out[curr]);
+            }
+
+            
+          }
 
           // push all succcessors in the queue
           for (BasicBlock *pred : predecessors(curr)) {
