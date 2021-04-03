@@ -8,9 +8,22 @@ using namespace llvm;
 
 namespace {
 
-  BitVector transfer_function(BitVector out, BitVector use, BitVector def) {
+  BitVector transfer_function(BitVector out, BitVector gen, BitVector kill) {
 
-    return BitVector();
+    // Pre-process kill to consider state of output vector (dependent kill)
+    unsigned size = kill.size();
+
+    for (int i=0; i<size; i++) {
+
+        if(!kill[i] && !out[i])
+          kill[i] = !kill[i];
+    }
+
+    // Basic transfer function equaton here
+    BitVector intermediate = set_diff(out, kill);
+    return set_union(intermediate, gen);
+    
+    
   }
 
   class dce : public FunctionPass {
@@ -120,10 +133,22 @@ namespace {
       unsigned size_bitvec = bvec_mapping.size();
 
       //initialize data flow framework
-      DFF dff(&F, false, INTERSECTION, size_bitvec, &transfer_function, false);
+      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true);
 
       // compute use and def sets here
       populate_gen_kill(F);
+
+      // pass the use and def sets to the DFF
+      dff.setGen(gen);
+      dff.setKill(kill);
+
+      // pass everything to the dff and start the analysis
+      dff.runAnalysis();
+
+      // copy results from DFF to this pass for future use
+      in = dff.getIN();
+      out = dff.getOUT();
+
 
 
       return false;
@@ -164,9 +189,9 @@ namespace {
 
     // sets
     VMap bvec_mapping;
-    BBVal lhs;
-    BBVal rhs;
-    BBVal use;
+    BBVal in;
+    BBVal out;
+
 
 
     BBVal gen;
