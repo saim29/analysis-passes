@@ -55,7 +55,7 @@ namespace {
       }
     }
 
-      BitVector populate_lhs(BasicBlock *B) {
+    BitVector populate_lhs(BasicBlock *B) {
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
@@ -134,9 +134,11 @@ namespace {
 
       // initialize top element and bottom element according to the meetOp
       unsigned size_bitvec = bvec_mapping.size();
+      
+      separability sep = NON_SEPARABLE;
 
       //initialize data flow framework
-      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, NON_SEPARABLE, &updateDepGen, &updateDepKill);
+      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, sep, &updateDepGen, &updateDepKill);
 
       // compute use and def sets here
       populate_gen_kill(F);
@@ -144,6 +146,12 @@ namespace {
       // pass the use and def sets to the DFF
       dff.setGen(gen);
       dff.setKill(kill);
+
+      if(sep == NON_SEPARABLE) {
+        dff.setLhs(glob_lhs);
+        dff.setRhs(glob_rhs);
+        dff.setUse(glob_use);
+      }
 
       // pass everything to the dff and start the analysis
       dff.runAnalysis();
@@ -175,6 +183,10 @@ namespace {
         BitVector lhs = populate_lhs(&B);
         BitVector rhs = populate_rhs(&B);
         BitVector use = populate_use(&B);
+        glob_lhs.insert({&B, genSet});
+        glob_rhs.insert({&B, killSet});
+        glob_use.insert({&B, genSet});
+
 
         BitVector comp_rhs = rhs.flip();
         genSet = set_intersection(lhs, comp_rhs);
@@ -196,7 +208,9 @@ namespace {
     BBVal out;
 
 
-
+    BBVal glob_lhs;
+    BBVal glob_rhs;
+    BBVal glob_use;
     BBVal gen;
     BBVal kill;
 
