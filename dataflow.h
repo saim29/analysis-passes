@@ -52,7 +52,7 @@ namespace llvm {
     typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<BasicBlock*> BBList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
-    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector);
+    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal);
     
 
     class DFF {
@@ -120,10 +120,9 @@ namespace llvm {
         // overloaded print functions
         void print(BitVector b, Value *rev_mapping[]); 
 
-        // virtual depGen and depKill updaters
-        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out);
-        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out);
-
+        
+        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
+        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
         // destructor for DFF
         ~DFF();
 

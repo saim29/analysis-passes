@@ -116,7 +116,7 @@ namespace llvm {
 
   void DFF::setLhs(BBVal glob_lhs) {
 
-    this->glob_lhs = lhs;
+    this->glob_lhs = glob_lhs;
 
   }
 
@@ -233,8 +233,8 @@ namespace llvm {
             // No? Call analysis specific updater
 
             if(out[curr] != lastIterOut) {
-              kill[curr] = updateDepKill(curr, kill[curr], out[curr]);
-              gen[curr] = updateDepGen(curr, gen[curr], out[curr]);
+              kill[curr] = updateDepKill(curr, kill[curr], out[curr], glob_lhs, glob_rhs, glob_use);
+              gen[curr] = updateDepGen(curr, gen[curr], out[curr], glob_lhs, glob_rhs, glob_use);
             }
 
             

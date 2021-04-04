@@ -17,12 +17,23 @@ namespace {
     
   }
 
-  BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out) {
+  BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out, 
+    BBVal lhs, BBVal rhs, BBVal use) {
     return gen;
   }
 
-  BitVector updateDepKill(BasicBlock *B, BitVector gen, BitVector out) {
-    return gen;
+  BitVector updateDepKill(BasicBlock *B, BitVector kill, BitVector out, 
+    BBVal lhs, BBVal rhs, BBVal use) {
+    
+    BitVector this_rhs = rhs[B];
+    unsigned size  = rhs.size();
+
+    for(int i=0; i< size; i++) {
+      if (this_rhs[i]) {
+        kill[i] = true;
+      }
+    }
+    return kill;
   }
 
 
