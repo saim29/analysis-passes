@@ -29,8 +29,8 @@ namespace {
     unsigned size  = rhs.size();
 
     for(int i=0; i< size; i++) {
-      if (this_rhs[i]) {
-        kill[i] = true;
+      if (this_rhs[i] == 1 && out[i] == 0) {
+        kill[i] = 1;
       }
     }
     return kill;
