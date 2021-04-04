@@ -67,6 +67,8 @@ namespace {
 
   public:
     static char ID;
+    std::map<BasicBlock*,BasicBlock*> immediateDominators;
+
     dominators() : FunctionPass(ID) { }
 
     
@@ -96,25 +98,25 @@ namespace {
       out = dff.getOUT();
 
       // print the results
-      dff.printRes<Value*>(BBMapping, "ADD", "SUB");
+      //dff.printRes<Value*>(BBMapping, "ADD", "SUB");
 
       std::vector<CFGLoop> loops = getCFGLoops(&F.getEntryBlock());
       getImmediateDominators(F);
 
-      outs() << "Number of Loops Found: " << loops.size() << "\n";
-      outs() << "Immediate Dominators For Loops: \n";
-      for (auto loop : loops) {
+      // outs() << "Number of Loops Found: " << loops.size() << "\n";
+      // outs() << "Immediate Dominators For Loops: \n";
+      // for (auto loop : loops) {
 
-        outs() << "\nLoop: " << loop.header->getName() << "\n";
+      //   outs() << "\nLoop: " << loop.header->getName() << "\n";
 
-        for (auto bb: loop.loopBody) {
+      //   for (auto bb: loop.loopBody) {
 
-          outs() << bb->getName() << ":   " << immediateDominators[bb]->getName() << "\n";
+      //     outs() << bb->getName() << ":   " << immediateDominators[bb]->getName() << "\n";
 
 
-        }
+      //   }
 
-      }
+      // }
 
       return false;
     }
@@ -165,6 +167,24 @@ namespace {
         return true;
       else
         return false;
+
+    }
+
+    bool dominates(Instruction *i1, Instruction *i2) {
+
+      // check if i1 dominates i2
+
+      BasicBlock *b1 = i1->getParent();
+      BasicBlock *b2 = i2->getParent();
+
+      if (b1 == b2) {
+
+        return i1->comesBefore(i2);
+
+      } else {
+
+        return dominates(b1, b2);
+      }
 
     }
 
@@ -256,11 +276,9 @@ namespace {
     BBVal in;
     BBVal out;
 
-    std::map<BasicBlock*,BasicBlock*> immediateDominators;
-
   };
 
   char dominators::ID = 0;
-  RegisterPass<dominators> X("dominators", "ECE 5984 dominators");
+  static RegisterPass<dominators> Y("dominators", "ECE 5984 dominators");
 
 }

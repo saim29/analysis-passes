@@ -144,7 +144,7 @@ namespace llvm {
 
   void DFF::runAnalysis() {
 
-    outs () << "********** Function: " + F->getName() + " ***********" << "\n";
+    //outs () << "********** Function: " + F->getName() + " ***********" << "\n";
 
     unsigned numIter = 0;
 
@@ -295,7 +295,7 @@ namespace llvm {
       } while (changed);
     }
 
-    outs() << "Convergence: " << numIter << " iterations" <<"\n";
+    //outs() << "Convergence: " << numIter << " iterations" <<"\n";
   }
 
 
