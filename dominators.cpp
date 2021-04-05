@@ -98,7 +98,7 @@ namespace {
       out = dff.getOUT();
 
       // print the results
-      //dff.printRes<Value*>(BBMapping, "ADD", "SUB");
+      dff.printRes<Value*>(BBMapping, "ADD", "SUB");
 
       std::vector<CFGLoop> loops = getCFGLoops(&F.getEntryBlock());
       getImmediateDominators(F);
