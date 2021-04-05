@@ -2,7 +2,10 @@
 
 #add any new tests to this variable
 
-outputs = test_licm1_licm.bc test_licm2_licm.bc test_licm3_licm.bc
+licm_tests = test_licm1_licm.bc test_licm2_licm.bc test_licm3_licm.bc
+dce_tests = test_dce1_dce.bc test_dce2_dce.bc
+
+outputs = $(licm_tests) $(dce_tests)
 
 all: $(outputs)
 
@@ -17,16 +20,17 @@ all: $(outputs)
 	# opt -dot-cfg $@
 	# dot -Tpng .main.dot -o main.png
 
-%_licm.bc : %_simplified.bc
+%_licm.bc : %_simplified.bc pass
 	opt -load ../loop-invariant-code-motion.so -LICM -f $< -o $@
 	# opt -dot-cfg $@
 	# dot -Tpng .main.dot -o main-LICM.png
 
-%_dce.bc : %_m2r.bc
+%_dce.bc : %_m2r.bc pass
 	opt -load ../dead-code-elimination.cpp -DCE -f $< -o $@
 
 pass:
 	make -C ..
 
 clean:
+	make clean -C ..
 	rm -f *.bc *.dot *.png *.ll
