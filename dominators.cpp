@@ -99,7 +99,7 @@ namespace {
       unsigned ind1 = BBMapping[b1];
       unsigned ind2 = BBMapping[b2];
 
-      if (in[b2][ind1] == true)
+      if (out[b2][ind1] == true)
         return true;
       else
         return false;
@@ -144,7 +144,7 @@ namespace {
 
           for (BasicBlock *pred : predecessors(curr)) {
 
-            if (dominates(pred, &B) && dominates(immediateDominators[&B], pred)) {
+            if (dominates(pred, &B) && dominates(immediateDominators[&B], pred) && curr != &B) {
 
               immediateDominators[&B] = pred;
 
