@@ -22,6 +22,8 @@ all: $(outputs)
 	# opt -dot-cfg $@
 	# dot -Tpng .main.dot -o main-LICM.png
 
+%_dce.bc : %_m2r.bc
+	opt -load ../dead-code-elimination.cpp -DCE -f $< -o $@
 
 pass:
 	make -C ..
