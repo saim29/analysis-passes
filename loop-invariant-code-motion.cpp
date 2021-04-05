@@ -38,10 +38,7 @@ namespace {
 
     virtual bool runOnLoop(Loop *L, LPPassManager &LPM) {
 
-      outs() << "Running on new loop ... \n\n";
-
-      // if (L->getLoopDepth() == 1 )
-      //   return false;
+      outs() << "\n\nRunning on new loop ... \n\n";
 
       LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
       domTree = &getAnalysis<dominators>();
@@ -51,20 +48,22 @@ namespace {
 
         bool modified = false;
 
-        //print loop dominance info
+        // print loop dominance info
+        outs () << "\nIMMEDIATE DOMINATORS\n";
+        outs () << "---------------------------\n";
         for (auto block : L->getBlocksVector()) {
 
           BasicBlock *imDom = domTree->immediateDominators[block];
           outs() << imDom->getName() << " dom " << block->getName() << "\n";
 
         }
+        outs () << "---------------------------\n\n";
 
         // set the landingPad to the loop preHeader initially
         BasicBlock *landingPad = L->getLoopPreheader();
 
         // we only want to insert a landing pad in a loop which is not in do; while form
         // do; while loops are automatically handled
-
         if (!L->isRotatedForm()) {
 
           //update landingPad to the newly created one if loop is not in  do; while form
@@ -78,6 +77,7 @@ namespace {
 
         // clear the worklist for the current loop
         invariantInsts.clear();
+
         return modified;
       }
 
@@ -95,7 +95,6 @@ namespace {
 
 
     // private methods
-
     BasicBlock* landingPadTransform(Loop *L) {
 
       BasicBlock *header = L->getHeader();
@@ -298,12 +297,13 @@ namespace {
 
       }
 
-      bool movable = true;
+      outs() << "INVARIANT INSTRUCTIONS\n";
+      outs() << "----------------------------------\n";
       for (auto inst : invariantInsts) {
 
-        inst->dump();
-
+        bool movable = true;
         Instruction *i_inst = dyn_cast<Instruction>(inst);
+        i_inst->dump();
 
         for (auto exit : loopExits) {
 
@@ -311,7 +311,8 @@ namespace {
           if (!domTree->dominates(b_inst, exit)) {
 
             movable = false;
-            outs() << "does not dom exit\n";
+            outs () << "Does not dom all exits\n";
+
           }
 
         }
@@ -322,22 +323,29 @@ namespace {
             if (!domTree->dominates(i_inst, u_inst)) {
 
               movable = false;
-              outs() << "does not dom uses\n";
-              u_inst->dump();
+              outs () << "Does not dom all uses\n";
+
+
             }
 
           }
 
         }
 
-        if (movable)
+        if (movable) {
+          outs () << "Can be Moved\n";
           canBeMoved.insert(i_inst);
+        }
 
       }
+      outs() << "----------------------------------\n\n";
 
+
+      outs() << "CODE MOTION\n";
+      outs() << "----------------------------------\n";
       for (auto inst : canBeMoved) {
 
-        outs () << "Moving out of loop";
+        outs () << "Moving out of loop: ";
         inst->dump();
         outs () << "\n";
 
@@ -348,6 +356,7 @@ namespace {
         inst->moveBefore(insertionPt);
 
       }
+      outs() << "----------------------------------\n";
 
       if (canBeMoved.empty())
         return false;

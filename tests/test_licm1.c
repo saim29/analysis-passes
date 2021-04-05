@@ -11,7 +11,8 @@ int main()
 {
 
     int a,b,c,d,e;
-
+    int f,g,h,i,j;
+    
     a = 20;
     b = 1000000;
     c = 5;
@@ -25,8 +26,6 @@ int main()
         e = c + 200;
 
     }
-
-    int f,g,h,i,j;
 
     f = 20;
     g = 1000000;
