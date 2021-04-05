@@ -2,6 +2,26 @@
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/ADT/PostOrderIterator.h"
+
+#include "llvm/IR/Function.h"
+#include "llvm/Analysis/LoopPass.h"
+#include "llvm/Pass.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/IR/Function.h"
+#include "llvm/Pass.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/LoopPass.h"
+#include "llvm/Analysis/ValueTracking.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/LegacyPassManagers.h"
+
+#include "llvm/IR/InstrTypes.h"
+
 #include "dataflow.h"
 
 using namespace llvm;
@@ -46,6 +66,18 @@ namespace {
     dce() : FunctionPass(ID) { }
 
   
+    bool isLive(Instruction *I){
+
+      if (I->isTerminator() || isa<DbgInfoIntrinsic>(I) || isa<LandingPadInst>(I), I->mayHaveSideEffects()) {
+
+          return false;
+        }
+
+      if (I->getNumUses() > 0)
+        return false;
+
+      return true;
+    }
 
     void map_indexes(Function &F) {
 
@@ -55,13 +87,9 @@ namespace {
 
         for (Instruction &I : B) {
 
-          if (I.isUsedInBasicBlock(&B) || I.isUsedOutsideOfBlock(&B)) {
-
             bvec_mapping.insert({&I, ind});
             ind++;
 
-
-          }
         }
       }
     }
@@ -104,9 +132,11 @@ namespace {
           for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
 
             Value* val = *op;
-              
-            unsigned ind = bvec_mapping[val];
-            b[ind] = 1;
+            
+            if (Instruction *inst = dyn_cast<Instruction>(val)) {
+              unsigned ind = bvec_mapping[inst];
+              b[ind] = 1;
+            }
 
           }
         }
@@ -129,8 +159,10 @@ namespace {
 
             Value* val = *op;
               
-            unsigned ind = bvec_mapping[val];
-            b[ind] = 1;
+            if (Instruction *inst = dyn_cast<Instruction>(val)) {
+              unsigned ind = bvec_mapping[inst];
+              b[ind] = 1;
+            }
 
           }
         }
@@ -149,7 +181,7 @@ namespace {
       separability sep = NON_SEPARABLE;
 
       //initialize data flow framework
-      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, sep, &updateDepGen, &updateDepKill);
+      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, false, sep, &updateDepGen, &updateDepKill);
 
       // compute use and def sets here
       populate_gen_kill(F);
@@ -171,7 +203,8 @@ namespace {
       in = dff.getIN();
       out = dff.getOUT();
 
-
+      // print results for debugging
+      print_faint_vals(F);
 
       return false;
     }
@@ -211,10 +244,62 @@ namespace {
       }
 
     }
+
+    void print_faint_vals(Function &F) {
+
+
+      Value* rev_mapping[bvec_mapping.size()];
+
+      for (auto ele : bvec_mapping) {
+
+        unsigned ind = ele.second;
+        Value* val = ele.first;
+
+        rev_mapping[ind] = val;
+
+      }
+
+      for (BasicBlock &B : F) {
+
+        StringRef bName = B.getName();
+
+        outs () << "==============" + bName + "==============" << "\n";
+
+        outs () << "\nIN: \n";
+        print_val(in[&B], rev_mapping);
+
+        outs () << "\n" << "gen" << "\n";
+        print_val(gen[&B], rev_mapping);
+
+        outs () << "\n" << "kill" << "\n";
+        print_val(kill[&B], rev_mapping);
+
+        outs () << "\nOUT: \n";
+        print_val(out[&B], rev_mapping);
+
+        outs () << "\n====================================" << "\n";
+
+      }
+    }
+
+    void print_val(BitVector b, Value *rev_mapping[]) {
+
+      for (int i=0; i<b.size(); i++) {
+
+        if (b[i]) {
+          rev_mapping[i]->dump();
+          // outs() << rev_mapping[i]->getName() << ",  ";
+        }
+      }
+
+      outs () << "\n";
+
+    }
+
   private:
 
     // sets
-    VMap bvec_mapping;
+    DenseMap<Instruction*,unsigned> bvec_mapping;
     BBVal in;
     BBVal out;
 
