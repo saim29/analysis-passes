@@ -27,8 +27,8 @@ all: $(outputs)
 
 %_dce.bc : %_m2r.bc pass
 	opt -load ../dead-code-elimination.so -DCE -f $< -o $@
-	# opt -dot-cfg $@
-	# dot -Tpng .main.dot -o main.png
+	opt -dot-cfg $@
+	dot -Tpng .main.dot -o main.png
 
 pass:
 	make -C ..

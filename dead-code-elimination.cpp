@@ -65,8 +65,8 @@ namespace {
     static char ID;
     dce() : FunctionPass(ID) { }
 
-  
-    bool isLive(Instruction *I){
+    // used to determine i 
+    bool isLive(Instruction *I) {
 
       if (I->isTerminator() || isa<DbgInfoIntrinsic>(I) || isa<LandingPadInst>(I), I->mayHaveSideEffects()) {
 
@@ -87,9 +87,14 @@ namespace {
 
         for (Instruction &I : B) {
 
+          StringRef name = getShortValueName(&I);
+
+          if (name[0] == '%') {
+
             bvec_mapping.insert({&I, ind});
             ind++;
 
+          }
         }
       }
     }
@@ -102,12 +107,13 @@ namespace {
 
       for (Instruction &I : *B) {
 
-        if (I.isUsedInBasicBlock(B) || I.isUsedOutsideOfBlock(B)) {
+          StringRef name = getShortValueName(&I);
+          if (name[0] == '%') {
+            
+            unsigned ind = bvec_mapping[&I];
+            b[ind] = 1;
 
-          unsigned ind = bvec_mapping[&I];
-          b[ind] = 1;
-
-        }           
+          }
       } 
       return b;
     }
@@ -122,24 +128,27 @@ namespace {
 
       for (Instruction &I : *B) {
 
-        if (I.isUsedInBasicBlock(B) || I.isUsedOutsideOfBlock(B)) {
+          StringRef name = getShortValueName(&I);
+          if (name[0] == '%') {
 
-          //do not process function calls
-          if (isa<CallInst>(&I))
-            continue;
+            //do not process function calls
+            if (isa<CallInst>(&I))
+              continue;
 
-          // go over instruction args
-          for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
 
-            Value* val = *op;
-            
-            if (Instruction *inst = dyn_cast<Instruction>(val)) {
-              unsigned ind = bvec_mapping[inst];
-              b[ind] = 1;
+            // go over instruction args
+            for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+
+              Value* val = *op;
+              
+              I.dump();
+              if (Instruction *inst = dyn_cast<Instruction>(val)) {
+
+                unsigned ind = bvec_mapping[inst];
+                b[ind] = 1;
+              }
             }
-
           }
-        }
       }
       return b;
     }
@@ -152,7 +161,7 @@ namespace {
 
       for (Instruction &I : *B) {
 
-        if (!I.isUsedInBasicBlock(B) && !I.isUsedOutsideOfBlock(B) || isa<CallInst>(&I)) {
+        if (getShortValueName(&I)[0] != '%' || isa<CallInst>(&I)) {
 
           // go over instruction args
           for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
@@ -181,7 +190,7 @@ namespace {
       separability sep = NON_SEPARABLE;
 
       //initialize data flow framework
-      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, false, sep, &updateDepGen, &updateDepKill);
+      DFF dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, sep, &updateDepGen, &updateDepKill);
 
       // compute use and def sets here
       populate_gen_kill(F);
@@ -227,9 +236,11 @@ namespace {
         BitVector lhs = populate_lhs(&B);
         BitVector rhs = populate_rhs(&B);
         BitVector use = populate_use(&B);
-        glob_lhs.insert({&B, genSet});
-        glob_rhs.insert({&B, killSet});
-        glob_use.insert({&B, genSet});
+
+        // ?
+        glob_lhs.insert({&B, lhs});
+        glob_rhs.insert({&B, rhs});
+        glob_use.insert({&B, use});
 
 
         BitVector comp_rhs = rhs.flip();
@@ -276,6 +287,15 @@ namespace {
 
         outs () << "\nOUT: \n";
         print_val(out[&B], rev_mapping);
+
+        outs () << "\nLHS: \n";
+        print_val(glob_lhs[&B], rev_mapping);
+
+        outs () << "\nRHS: \n";
+        print_val(glob_rhs[&B], rev_mapping);
+
+        outs () << "\nUSE: \n";
+        print_val(glob_use[&B], rev_mapping);
 
         outs () << "\n====================================" << "\n";
 
