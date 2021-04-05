@@ -144,7 +144,7 @@ namespace {
 
           for (BasicBlock *pred : predecessors(curr)) {
 
-            if (dominates(pred, &B) && dominates(immediateDominators[&B], pred) && curr != &B) {
+            if (dominates(pred, &B) && dominates(immediateDominators[&B], pred) && pred != &B) {
 
               immediateDominators[&B] = pred;
 
