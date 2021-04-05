@@ -228,5 +228,5 @@ namespace {
   };
 
   char dce::ID = 0;
-  RegisterPass<dce> X("dce", "ECE 5984 dce");
+  RegisterPass<dce> X("DCE", "ECE 5984 dce");
 }
