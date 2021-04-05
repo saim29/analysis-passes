@@ -42,11 +42,17 @@ namespace llvm {
 
     };
 
+    enum separability {
+        SEPARABLE,
+        NON_SEPARABLE
+    };
+
     typedef DenseMap <BasicBlock*, BitVector> BBVal;
     typedef std::map <Value*, unsigned> VMap;
     typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<BasicBlock*> BBList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
+    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal);
     
 
     class DFF {
@@ -57,9 +63,14 @@ namespace llvm {
 
         bool direction; // 0 forward; 1 backward
         meetOperator meetOp; // meet operator for preds or succ
+        separability sep; // separability condition for analysis like faint analysis
 
         BBVal in; // in[B]
         BBVal out; // out[B]
+
+        BBVal glob_lhs; 
+        BBVal glob_rhs; 
+        BBVal glob_use;
         
         // gen and kill sets; Should be calculated by the specific analysis and passed to DFF
         BBVal gen;
@@ -82,11 +93,20 @@ namespace llvm {
         public:
         // constructors for DFF
         DFF();
-        DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc, bool boundary_val);
+        DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+           bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
 
         // methods to set specific sets
         void setGen(BBVal gen);
         void setKill(BBVal kill);
+
+        // Sets for faint variable analysis
+
+        void setLhs(BBVal glob_lhs);
+        void setRhs(BBVal glob_rhs);
+        void setUse(BBVal glob_use);
+
+
         void setBoundary(bool direction, bool boundary_val, unsigned bitvec_size);
 
         // methods to return the result
@@ -100,6 +120,9 @@ namespace llvm {
         // overloaded print functions
         void print(BitVector b, Value *rev_mapping[]); 
 
+        
+        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
+        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
         // destructor for DFF
         ~DFF();
 
