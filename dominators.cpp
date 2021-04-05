@@ -8,55 +8,6 @@ using namespace llvm;
 
 namespace {
 
-  class CFGLoop {
-
-    public:
-
-    CFGLoop(BasicBlock *h, BasicBlock *e) {
-
-      this->header = h;
-      this->end = e;
-
-      populate();
-
-    }
-
-    BasicBlock *header;
-    BasicBlock *end;
-
-    std::set<BasicBlock*> loopBody;
-
-    void populate() {
-
-      std::queue<BasicBlock*> bfs;
-      std::set<BasicBlock*> visited;
-
-      loopBody.insert(end);
-      bfs.push(end);
-
-      bool kill = false;
-      while (!kill) {
-
-        BasicBlock* curr = bfs.front();
-        bfs.pop();
-        visited.insert(curr);
-
-        for (BasicBlock *pred : predecessors(curr)) {
-
-          if (pred == header) {
-            kill = true;
-          }
-
-          if (visited.find(pred) == visited.end()) {
-
-            bfs.push(pred);
-            loopBody.insert(pred);
-          }
-        }
-      }
-    }
-  };
-
   BitVector transfer_function(BitVector out, BitVector use, BitVector def) {
 
     return set_union(out, use);
@@ -97,26 +48,11 @@ namespace {
       in = dff.getIN();
       out = dff.getOUT();
 
+      // get immediate dominators for every node
+      findImmediateDominators(F);
+
       // print the results
       dff.printRes<Value*>(BBMapping, "ADD", "SUB");
-
-      std::vector<CFGLoop> loops = getCFGLoops(&F.getEntryBlock());
-      getImmediateDominators(F);
-
-      // outs() << "Number of Loops Found: " << loops.size() << "\n";
-      // outs() << "Immediate Dominators For Loops: \n";
-      // for (auto loop : loops) {
-
-      //   outs() << "\nLoop: " << loop.header->getName() << "\n";
-
-      //   for (auto bb: loop.loopBody) {
-
-      //     outs() << bb->getName() << ":   " << immediateDominators[bb]->getName() << "\n";
-
-
-      //   }
-
-      // }
 
       return false;
     }
@@ -163,7 +99,7 @@ namespace {
       unsigned ind1 = BBMapping[b1];
       unsigned ind2 = BBMapping[b2];
 
-      if (out[b2][ind1] == true)
+      if (in[b2][ind1] == true)
         return true;
       else
         return false;
@@ -188,46 +124,7 @@ namespace {
 
     }
 
-    std::vector<CFGLoop> getCFGLoops(BasicBlock* entry) {
-      
-      std::stack<BasicBlock*> dfs;
-      std::set<BasicBlock*> visited;
-
-      std::vector<CFGLoop> loops;
-
-      dfs.push(entry);
-
-      while(!dfs.empty()) {
-
-        BasicBlock *curr = dfs.top();
-        dfs.pop();
-        visited.insert(curr);
-
-        for (BasicBlock *succ : successors(curr)) {
-
-          if (visited.find(succ) == visited.end()) {
-
-            dfs.push(succ);
-
-          } else {
-
-            if (dominates(succ, curr)) {
-
-              //loop header succ, loop end curr;
-              CFGLoop loop(succ, curr);
-              loops.push_back(loop);
-            }
-
-          }
-
-        }
-      }
-
-      return loops;
-
-    }
-
-    void getImmediateDominators(Function &F) {
+    void findImmediateDominators(Function &F) {
 
       BasicBlock *entry = &F.getEntryBlock();
       for (BasicBlock &B :F) {
@@ -243,17 +140,17 @@ namespace {
           BasicBlock* curr = bfs.front();
           bfs.pop();
 
-          visited.insert(&B);
+          visited.insert(curr);
 
           for (BasicBlock *pred : predecessors(curr)) {
 
-            if (dominates(pred, curr) && dominates(immediateDominators[curr], pred)) {
+            if (dominates(pred, &B) && dominates(immediateDominators[&B], pred)) {
 
-              immediateDominators[curr] = pred;
+              immediateDominators[&B] = pred;
 
             }
 
-            if (visited.find(curr) == visited.end()) {
+            if (visited.find(pred) == visited.end()) {
 
               bfs.push(pred);
 
