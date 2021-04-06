@@ -3,7 +3,7 @@
     DCE micro benchmark 1
 
 */
-int main() {
+int main(void) {
     int a, b, c, d, e;
 
     a = 100;

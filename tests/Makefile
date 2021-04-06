@@ -11,7 +11,7 @@ all: $(outputs)
 
 .PRECIOUS: %_m2r.bc
 %.bc : %.c
-	clang -Xclang -disable-O0-optnone -O0 -emit-llvm -c $< 
+	clang -Xclang -disable-O0-optnone -O0 -emit-llvm -c $<
 
 %_m2r.bc : %.bc
 	opt -mem2reg -f $< -o $@
