@@ -10,9 +10,9 @@ int main() {
     b = 5;
     c = 25;
 
+    a +=a;
     d = a + c * 4;
     b+=b;
-    a +=a;
     e = a/c;
 
     return e;

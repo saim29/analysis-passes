@@ -1,8 +1,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __CLASSICAL_DATAFLOW_H__
-#define __CLASSICAL_DATAFLOW_H__
+#ifndef __CLASSICAL_DATAFLOW_DCE__
+#define __CLASSICAL_DATAFLOW_DCE__
 
 #include <stdio.h>
 #include <iostream>
@@ -24,27 +24,29 @@
 
 #include "available-support.h"
 
-namespace llvm {
-
     // Add definitions (and code, depending on your strategy) for your dataflow
     // abstraction here.
 
     // set operations for bitvectors
-    BitVector set_union_dce(BitVector b1, BitVector b2);
-    BitVector set_intersection_dce(BitVector b1, BitVector b2);
-    BitVector set_diff_dce(BitVector b1, BitVector b2);
+  /*
+
+    SET OPERATIONS
+
+  */
+
+  using namespace llvm;
+
+  BitVector set_union_dce(BitVector b1, BitVector b2);
+  BitVector set_intersection_dce(BitVector b1, BitVector b2);
+  BitVector set_diff_dce(BitVector b1, BitVector b2);
 
     // can add support for more meet operators here
+
     enum meetOperator {
 
         INTERSECTION,
         UNION
 
-    };
-
-    enum separability {
-        SEPARABLE,
-        NON_SEPARABLE
     };
 
     typedef DenseMap <Instruction*, BitVector> IVal;
@@ -54,7 +56,7 @@ namespace llvm {
     typedef BitVector(*genKillUpdaterTy) (Instruction*, BitVector, BitVector, IVal, IVal, IVal, VMap);
     
 
-    class DFF_DCE {
+    class non_sep_dff {
 
         private:
 
@@ -64,7 +66,6 @@ namespace llvm {
 
         bool direction; // 0 forward; 1 backward
         meetOperator meetOp; // meet operator for preds or succ
-        separability sep; // separability condition for analysis like faint analysis
 
         IVal in; // in[B]
         IVal out; // out[B]
@@ -100,9 +101,10 @@ namespace llvm {
 
         public:
         // constructors for DFF_DCE
-        DFF_DCE();
-        DFF_DCE(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
-           bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
+        non_sep_dff();
+
+        non_sep_dff(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+           bool boundary_val, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
 
         // methods to set specific sets
         void setGen(IVal gen);
@@ -122,13 +124,11 @@ namespace llvm {
         IVal getOUT();
 
         // destructor for DFF_DCE
-        ~DFF_DCE();
+        ~non_sep_dff();
 
         void runAnalysis(); // traversal of basicblocks based on the direction boolean
 
     };
 
-
-}
 
 #endif

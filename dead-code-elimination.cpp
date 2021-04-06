@@ -78,18 +78,25 @@ namespace {
     unsigned ind = bmap[I];
 
     if(this_out[ind] == 0 && this_lhs[ind] == 1) {
+
+      I->dump();
+
+      outs () << "killed\n";
       for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
 
         Value* val = *op;
-        this_kill[ind] = 1;
+
+        if (isa<Instruction>(val)) {
+
+          val->dump();
+          unsigned ind_op = bmap[val];
+          this_kill[ind_op] = 1;
+        }
       }
     }
     return this_kill;
 
   }
-
-
-  
 
   class dce : public FunctionPass {
 
@@ -214,10 +221,8 @@ namespace {
       // initialize top element and bottom element according to the meetOp
       unsigned size_bitvec = bvec_mapping.size();
       
-      separability sep = NON_SEPARABLE;
-
       //initialize data flow framework
-      DFF_DCE dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, sep, &updateDepGen, &updateDepKill);
+      non_sep_dff dff(&F, true, INTERSECTION, size_bitvec, &transfer_function, true, &updateDepGen, &updateDepKill);
 
       // compute use and def sets here
       populate_gen_kill(F);
@@ -226,12 +231,10 @@ namespace {
       dff.setGen(gen);
       dff.setKill(kill);
 
-      if(sep == NON_SEPARABLE) {
-        dff.setLhs(glob_lhs);
-        dff.setRhs(glob_rhs);
-        dff.setUse(glob_use);
-        dff.set_bvec_mapping(bvec_mapping);
-      }
+      dff.setLhs(glob_lhs);
+      dff.setRhs(glob_rhs);
+      dff.setUse(glob_use);
+      dff.set_bvec_mapping(bvec_mapping);
 
       // pass everything to the dff and start the analysis
       dff.runAnalysis();
@@ -241,32 +244,21 @@ namespace {
       out = dff.getOUT();
 
       // print results for debugging
-      // print_faint_vals(F);
+      print_faint_vals(F);
 
-      // Value* rev_mapping[bvec_mapping.size()];
+      for (BasicBlock &B : F) {
 
-      // for (auto ele : bvec_mapping) {
+        for (Instruction &I : B) {
 
-      //   unsigned ind = ele.second;
-      //   Value* val = ele.first;
-
-      //   rev_mapping[ind] = val;
-
-      // }
-
-      // for (BasicBlock &B : F) {
-
-      //   for (Instruction &I : B) {
-
-      //     if (!isLive(&I)) {
+          if (!isLive(&I)) {
         
-      //       //I.dump();
+            //I.dump();
             
-      //     }
+          }
 
-      //   }
+        }
 
-      // }
+      }
 
       return false;
     }
@@ -315,65 +307,68 @@ namespace {
 
     }
 
-    // void print_faint_vals(Function &F) {
+    void print_faint_vals(Function &F) {
 
 
-    //   Value* rev_mapping[bvec_mapping.size()];
+      Value* rev_mapping[bvec_mapping.size()];
 
-    //   for (auto ele : bvec_mapping) {
+      for (auto ele : bvec_mapping) {
 
-    //     unsigned ind = ele.second;
-    //     Value* val = ele.first;
+        unsigned ind = ele.second;
+        Value* val = ele.first;
 
-    //     rev_mapping[ind] = val;
+        rev_mapping[ind] = val;
 
-    //   }
+      }
 
-    //   for (BasicBlock &B : F) {
+      for (BasicBlock &B : F) {
 
-    //     StringRef bName = B.getName();
+        for (Instruction &I: B) {
 
-    //     outs () << "==============" + bName + "==============" << "\n";
+          outs () << "============================" << "\n";
+          I.dump();
+          outs () << "============================" << "\n";
 
-    //     outs () << "\nIN: \n";
-    //     print_val(in[&B], rev_mapping);
+          outs () << "\nIN: \n";
+          print_val(in[&I], rev_mapping);
 
-    //     outs () << "\n" << "gen" << "\n";
-    //     print_val(gen[&B], rev_mapping);
+          outs () << "\n" << "gen" << "\n";
+          print_val(gen[&I], rev_mapping);
 
-    //     outs () << "\n" << "kill" << "\n";
-    //     print_val(kill[&B], rev_mapping);
+          outs () << "\n" << "kill" << "\n";
+          print_val(kill[&I], rev_mapping);
 
-    //     outs () << "\nOUT: \n";
-    //     print_val(out[&B], rev_mapping);
+          outs () << "\nOUT: \n";
+          print_val(out[&I], rev_mapping);
 
-    //     outs () << "\nLHS: \n";
-    //     print_val(glob_lhs[&B], rev_mapping);
+          outs () << "\nLHS: \n";
+          print_val(glob_lhs[&I], rev_mapping);
 
-    //     outs () << "\nRHS: \n";
-    //     print_val(glob_rhs[&B], rev_mapping);
+          outs () << "\nRHS: \n";
+          print_val(glob_rhs[&I], rev_mapping);
 
-    //     outs () << "\nUSE: \n";
-    //     print_val(glob_use[&B], rev_mapping);
+          outs () << "\nUSE: \n";
+          print_val(glob_use[&I], rev_mapping);
 
-    //     outs () << "\n====================================" << "\n";
+          outs () << "\n====================================" << "\n";
 
-    //   }
-    // }
+        }
+      }
+    }
 
-    // void print_val(BitVector b, Value *rev_mapping[]) {
+    void print_val(BitVector b, Value *rev_mapping[]) {
 
-    //   for (int i=0; i<b.size(); i++) {
+      for (int i=0; i<b.size(); i++) {
 
-    //     if (b[i]) {
-    //       rev_mapping[i]->dump();
-    //       // outs() << rev_mapping[i]->getName() << ",  ";
-    //     }
-    //   }
+        if (b[i]) {
+          rev_mapping[i]->dump();
+          // outs() << rev_mapping[i]->getName() << ",  ";
+        }
+      }
 
-    //   outs () << "\n";
+      outs () << "\n";
 
-    // }
+    }
 
   private:
 

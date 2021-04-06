@@ -3,47 +3,22 @@
 
 #include "dataflow_dce.h"
 
-namespace llvm {
-
   // Add code for your dataflow abstraction here.
 
-  DFF_DCE::DFF_DCE() {
+  non_sep_dff::non_sep_dff() {
 
   }
 
-  void DFF_DCE::setBoundary(bool direction, bool boundary_val, unsigned bitvec_size) {
 
-    BitVector init_val = BitVector(bitvec_size, boundary_val);
-
-    if(direction == 0) { // Forwards
-
-      BasicBlock &B = F->getEntryBlock();
-      Instruction &I = B.front();
-      out[&I] = init_val;
-      out_entry = init_val;
-
-    }
-
-    else {  // Backwards
-
-      for (auto ele: getPossibleExitInsts()) {
-        in[ele] = init_val;
-      }
-
-      in_exit = init_val;
-    }
-  }
-
-  DFF_DCE::DFF_DCE(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
-           bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill) {
-
+  non_sep_dff::non_sep_dff(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+      bool boundary_val, genKillUpdaterTy depGen, genKillUpdaterTy depKill) {
+        
     this->F = F;
     this->direction = direction;
     this->meetOp = meetOp;
     this->transferFunc = transferFunc;
     this->T.resize(bitvec_size, false);
     this->B.resize(bitvec_size, false);
-    this->sep = sep;
     this->updateDepGen = depGen;
     this->updateDepKill = depKill;
     
@@ -79,60 +54,82 @@ namespace llvm {
     // Boundary condition
 
     setBoundary(direction, boundary_val, bitvec_size);
-
   }
 
-  DFF_DCE::~DFF_DCE() {
+  non_sep_dff::~non_sep_dff() {
 
   }  
 
-  IVal DFF_DCE::getIN() {
+  IVal non_sep_dff::getIN() {
 
     return in;
 
   }
 
-  IVal DFF_DCE::getOUT() {
+  IVal non_sep_dff::getOUT() {
 
     return out;
 
   }
 
-  void DFF_DCE::setGen(IVal gen) {
+  void non_sep_dff::setGen(IVal gen) {
 
     this->gen = gen;
 
   }
 
-  void DFF_DCE::setKill(IVal kill) {
+  void non_sep_dff::setKill(IVal kill) {
 
     this->kill = kill;
 
   }
 
-  void DFF_DCE::setLhs(IVal glob_lhs) {
+  void non_sep_dff::setLhs(IVal glob_lhs) {
 
     this->glob_lhs = glob_lhs;
 
   }
 
-  void DFF_DCE::setRhs(IVal glob_rhs) {
+  void non_sep_dff::setRhs(IVal glob_rhs) {
 
     this->glob_rhs = glob_rhs;
 
   }
-  void DFF_DCE::setUse(IVal glob_use) {
+  void non_sep_dff::setUse(IVal glob_use) {
 
     this->glob_use = glob_use;
 
   }
 
-  void DFF_DCE::set_bvec_mapping(VMap mapping) {
+  void non_sep_dff::set_bvec_mapping(VMap mapping) {
 
     this->bvec_mapping = mapping;
   }
 
-  IList DFF_DCE::getPossibleExitInsts() {
+  void non_sep_dff::setBoundary(bool direction, bool boundary_val, unsigned bitvec_size) {
+
+    BitVector init_val = BitVector(bitvec_size, boundary_val);
+
+    if(direction == 0) { // Forwards
+
+      BasicBlock &B = F->getEntryBlock();
+      Instruction &I = B.front();
+      out[&I] = init_val;
+      out_entry = init_val;
+
+    }
+
+    else {  // Backwards
+
+      for (auto ele: getPossibleExitInsts()) {
+        in[ele] = init_val;
+      }
+
+      in_exit = init_val;
+    }
+  }
+
+  IList non_sep_dff::getPossibleExitInsts() {
 
     IList ret;
 
@@ -149,7 +146,7 @@ namespace llvm {
     return ret;
   }
 
-  std::vector<BasicBlock*> DFF_DCE::getPossibleExitBlocks() {
+  std::vector<BasicBlock*> non_sep_dff::getPossibleExitBlocks() {
 
     std::vector<BasicBlock*> ret;
 
@@ -167,12 +164,12 @@ namespace llvm {
   }
 
 
-  bool DFF_DCE::traverseBlockBackwards(BasicBlock *B) {
+  bool non_sep_dff::traverseBlockBackwards(BasicBlock *B) {
 
     bool changed = false;
     Instruction *prev = &B->back();
 
-    for(BasicBlock::iterator it = B->end(), bEnd = B->begin(); it != bEnd; it--) {
+    for(BasicBlock::reverse_iterator it = B->rbegin(), bEnd = B->rend(); it != bEnd; ++it) {
 
       Instruction *inst = &*it;
 
@@ -197,9 +194,11 @@ namespace llvm {
 
       prev = inst;
     }
+
+    return changed;
   }
 
-  BitVector DFF_DCE::applyMeet(BitVector b1, BitVector b2) {
+  BitVector non_sep_dff::applyMeet(BitVector b1, BitVector b2) {
 
     BitVector output;
 
@@ -214,7 +213,7 @@ namespace llvm {
     return output;
   }
 
-  void DFF_DCE::runAnalysis() {
+  void non_sep_dff::runAnalysis() {
 
     outs () << "********** Function: " + F->getName() + " ***********" << "\n";
 
@@ -298,14 +297,6 @@ namespace llvm {
     outs() << "Convergence: " << numIter << " iterations" <<"\n";
   }
 
-
-
-  /*
-
-    SET OPERATIONS
-
-  */
-
   BitVector set_union_dce(BitVector b1, BitVector b2) {
 
     unsigned size = b1.size();
@@ -354,4 +345,3 @@ namespace llvm {
     return u;
 
   }
-}
