@@ -9,6 +9,7 @@ outputs = $(licm_tests) $(dce_tests)
 
 all: $(outputs)
 
+.PRECIOUS: %_m2r.bc
 %.bc : %.c
 	clang -Xclang -disable-O0-optnone -O0 -emit-llvm -c $< 
 
@@ -35,4 +36,5 @@ pass:
 
 clean:
 	make clean -C ..
-	rm -f *.bc *.dot *.png *.ll
+	rm -f *.bc .*.dot *.png *.ll
+
