@@ -52,7 +52,7 @@ namespace llvm {
     typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<BasicBlock*> BBList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
-    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal);
+    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal, VMap);
     
 
     class DFF {
@@ -60,6 +60,8 @@ namespace llvm {
         private:
 
         Function *F; // pointer to the function under inspection
+
+        VMap bvec_mapping;
 
         bool direction; // 0 forward; 1 backward
         meetOperator meetOp; // meet operator for preds or succ
@@ -100,6 +102,8 @@ namespace llvm {
         void setGen(BBVal gen);
         void setKill(BBVal kill);
 
+        void set_bvec_mapping(VMap mapping);
+
         // Sets for faint variable analysis
 
         void setLhs(BBVal glob_lhs);
@@ -121,8 +125,8 @@ namespace llvm {
         void print(BitVector b, Value *rev_mapping[]); 
 
         
-        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
-        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, BBVal lhs, BBVal rhs, BBVal use);
+        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, BBVal lhs, BBVal rhs, BBVal use, VMap bmap);
+        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, BBVal lhs, BBVal rhs, BBVal use, VMap bmap);
         // destructor for DFF
         ~DFF();
 

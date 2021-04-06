@@ -1,5 +1,5 @@
 digraph "CFG for 'main' function" {
 	label="CFG for 'main' function";
 
-	Node0x556321e0d890 [shape=record,color="#b70d28ff", style=filled, fillcolor="#b70d2870",label="{entry:\l  %mul = mul nsw i32 25, 4\l  %add = add nsw i32 100, %mul\l  %add1 = add nsw i32 5, 5\l  %add2 = add nsw i32 100, 100\l  %div = sdiv i32 %add2, 25\l  ret i32 %div\l}"];
+	Node0x558c90618890 [shape=record,color="#b70d28ff", style=filled, fillcolor="#b70d2870",label="{entry:\l  %mul = mul nsw i32 25, 4\l  %add = add nsw i32 100, %mul\l  %add1 = add nsw i32 5, 5\l  %add2 = add nsw i32 100, 100\l  %div = sdiv i32 %add2, 25\l  ret i32 %div\l}"];
 }

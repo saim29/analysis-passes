@@ -38,19 +38,59 @@ namespace {
   }
 
   BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out, 
-    BBVal lhs, BBVal rhs, BBVal use) {
+    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
+
+    // BitVector this_gen(gen.size(), false);
+
+    // for (unsigned i=0; i<gen.size(); i++) {
+
+    //   if (use[B][i])
+    //     this_gen[i] = 0;
+    //   else
+    //     this_gen[i] = gen[i];
+
+    // }
     return gen;
   }
 
   BitVector updateDepKill(BasicBlock *B, BitVector kill, BitVector out, 
-    BBVal lhs, BBVal rhs, BBVal use) {
+    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
     
+    BitVector this_lhs = lhs[B];
     BitVector this_rhs = rhs[B];
-    unsigned size  = rhs.size();
+    unsigned size  = this_rhs.size();
+
+    Value* rev_mapping[bmap.size()];
+
+    for (auto ele : bmap) {
+
+      unsigned ind = ele.second;
+      Value* val = ele.first;
+
+      rev_mapping[ind] = val;
+
+    }
+
 
     for(int i=0; i< size; i++) {
-      if (this_rhs[i] == 1 && out[i] == 0) {
-        kill[i] = 1;
+
+      if (this_lhs[i] == 1 && out[i] == 0) {
+
+        Instruction *I = dyn_cast<Instruction>(rev_mapping[i]);
+        // go over instruction args
+        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
+
+          Value* val = *op;
+
+          unsigned ind = bmap[val];
+          kill[i] = 1;
+          
+        }
+        // // update rhs of the specific var
+        // if (this_rhs[i] == 1) {
+        //   kill[i] = 1;
+        // }
+
       }
     }
     return kill;
@@ -68,15 +108,15 @@ namespace {
     // used to determine i 
     bool isLive(Instruction *I) {
 
-      if (I->isTerminator() || isa<DbgInfoIntrinsic>(I) || isa<LandingPadInst>(I), I->mayHaveSideEffects()) {
+      if (I->isTerminator() || isa<DbgInfoIntrinsic>(I) || isa<LandingPadInst>(I) || I->mayHaveSideEffects()) {
 
-          return false;
+          return true;
         }
 
-      if (I->getNumUses() > 0)
-        return false;
+      // if (I->getNumUses() > 0)
+      //   return true;
 
-      return true;
+      return false;
     }
 
     void map_indexes(Function &F) {
@@ -131,7 +171,7 @@ namespace {
           StringRef name = getShortValueName(&I);
           if (name[0] == '%') {
 
-            //do not process function calls
+            //do not process function calls or instructions that may be assignments
             if (isa<CallInst>(&I))
               continue;
 
@@ -141,7 +181,8 @@ namespace {
 
               Value* val = *op;
               
-              I.dump();
+              // only map arguments that are coming from potential definitions
+              // ignore any other arguments i.e constants etc
               if (Instruction *inst = dyn_cast<Instruction>(val)) {
 
                 unsigned ind = bvec_mapping[inst];
@@ -163,12 +204,18 @@ namespace {
 
         if (getShortValueName(&I)[0] != '%' || isa<CallInst>(&I)) {
 
+          // do not process branchInsts
+          // if (I.isTerminator())
+          //   continue;
+
           // go over instruction args
           for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
 
             Value* val = *op;
               
+            // only map arguments if they are definitions otherwise ignore
             if (Instruction *inst = dyn_cast<Instruction>(val)) {
+
               unsigned ind = bvec_mapping[inst];
               b[ind] = 1;
             }
@@ -176,6 +223,7 @@ namespace {
           }
         }
       }
+
       return b;
     }
 
@@ -203,6 +251,7 @@ namespace {
         dff.setLhs(glob_lhs);
         dff.setRhs(glob_rhs);
         dff.setUse(glob_use);
+        dff.set_bvec_mapping(bvec_mapping);
       }
 
       // pass everything to the dff and start the analysis
@@ -214,6 +263,31 @@ namespace {
 
       // print results for debugging
       print_faint_vals(F);
+
+      Value* rev_mapping[bvec_mapping.size()];
+
+      for (auto ele : bvec_mapping) {
+
+        unsigned ind = ele.second;
+        Value* val = ele.first;
+
+        rev_mapping[ind] = val;
+
+      }
+
+      for (BasicBlock &B : F) {
+
+        for (Instruction &I : B) {
+
+          if (!isLive(&I)) {
+        
+            //I.dump();
+            
+          }
+
+        }
+
+      }
 
       return false;
     }
@@ -231,7 +305,6 @@ namespace {
         // After everything is done, whatever is left is the relevant gen and kill for that block
 
         BitVector genSet(size, false);
-        BitVector killSet(size, false);
 
         BitVector lhs = populate_lhs(&B);
         BitVector rhs = populate_rhs(&B);
@@ -246,8 +319,12 @@ namespace {
         BitVector comp_rhs = rhs.flip();
         genSet = set_intersection(lhs, comp_rhs);
 
+        //added for use
+        // BitVector comp_use = use.flip();
+        // genSet = set_intersection(genSet, comp_use);
+
         // This is constant kill. Dependent kill will be updated during actual analysis
-        killSet = use;
+        BitVector killSet(glob_use[&B]);
 
         gen.insert({&B, genSet});
         kill.insert({&B, killSet});
@@ -319,7 +396,7 @@ namespace {
   private:
 
     // sets
-    DenseMap<Instruction*,unsigned> bvec_mapping;
+    VMap bvec_mapping;
     BBVal in;
     BBVal out;
 

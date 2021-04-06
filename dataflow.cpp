@@ -131,6 +131,11 @@ namespace llvm {
 
   }
 
+  void DFF::set_bvec_mapping(VMap mapping) {
+
+    this->bvec_mapping = mapping;
+  }
+
   BBList DFF::getPossibleExitBlocks() {
 
     BBList ret;
@@ -233,8 +238,8 @@ namespace llvm {
             // No? Call analysis specific updater
 
             if(out[curr] != lastIterOut) {
-              kill[curr] = updateDepKill(curr, kill[curr], out[curr], glob_lhs, glob_rhs, glob_use);
-              gen[curr] = updateDepGen(curr, gen[curr], out[curr], glob_lhs, glob_rhs, glob_use);
+              kill[curr] = updateDepKill(curr, kill[curr], out[curr], glob_lhs, glob_rhs, glob_use, bvec_mapping);
+              gen[curr] = updateDepGen(curr, gen[curr], out[curr], glob_lhs, glob_rhs, glob_use, bvec_mapping);
             }
 
             
