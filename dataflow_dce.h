@@ -96,7 +96,7 @@ namespace llvm {
         std::vector<BasicBlock*> getPossibleExitBlocks();
 
         // traverse blocks
-        void traverseBlockBackwards(BasicBlock *B);
+        bool traverseBlockBackwards(BasicBlock *B);
 
         public:
         // constructors for DFF_DCE
