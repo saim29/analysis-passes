@@ -47,12 +47,20 @@ namespace llvm {
         NON_SEPARABLE
     };
 
-    typedef DenseMap <BasicBlock*, BitVector> BBVal;
+    /*typedef DenseMap <BasicBlock*, BitVector> BBVal;
+    typedef std::map <Value*, unsigned> VMap;
+    typedef std::map <Expression*, unsigned> EMap;*/
+    typedef std::vector<BasicBlock*> BBList;
+    /*typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
+    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal, VMap);*/
+
+
+    typedef DenseMap <Instruction*, BitVector> IVal;
     typedef std::map <Value*, unsigned> VMap;
     typedef std::map <Expression*, unsigned> EMap;
-    typedef std::vector<BasicBlock*> BBList;
+    typedef std::vector<Instruction*> IList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
-    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal, VMap);
+    typedef BitVector(*genKillUpdaterTy) (Instruction*, BitVector, BitVector, IVal, IVal, IVal, VMap);
     
 
     class DFF {
@@ -67,16 +75,16 @@ namespace llvm {
         meetOperator meetOp; // meet operator for preds or succ
         separability sep; // separability condition for analysis like faint analysis
 
-        BBVal in; // in[B]
-        BBVal out; // out[B]
+        IVal in; // in[B]
+        IVal out; // out[B]
 
-        BBVal glob_lhs; 
-        BBVal glob_rhs; 
-        BBVal glob_use;
+        IVal glob_lhs; 
+        IVal glob_rhs; 
+        IVal glob_use;
         
         // gen and kill sets; Should be calculated by the specific analysis and passed to DFF
-        BBVal gen;
-        BBVal kill;
+        IVal gen;
+        IVal kill;
 
         BitVector T; // Top value of the semi lattice
         BitVector B; // Bottom value of the semi lattice
@@ -99,23 +107,23 @@ namespace llvm {
            bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
 
         // methods to set specific sets
-        void setGen(BBVal gen);
-        void setKill(BBVal kill);
+        void setGen(IVal gen);
+        void setKill(IVal kill);
 
         void set_bvec_mapping(VMap mapping);
 
         // Sets for faint variable analysis
 
-        void setLhs(BBVal glob_lhs);
-        void setRhs(BBVal glob_rhs);
-        void setUse(BBVal glob_use);
+        void setLhs(IVal glob_lhs);
+        void setRhs(IVal glob_rhs);
+        void setUse(IVal glob_use);
 
 
         void setBoundary(bool direction, bool boundary_val, unsigned bitvec_size);
 
         // methods to return the result
-        BBVal getIN();
-        BBVal getOUT();
+        IVal getIN();
+        IVal getOUT();
 
         // function to print all results on convergence
         template<class A> 
@@ -125,8 +133,8 @@ namespace llvm {
         void print(BitVector b, Value *rev_mapping[]); 
 
         
-        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, BBVal lhs, BBVal rhs, BBVal use, VMap bmap);
-        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, BBVal lhs, BBVal rhs, BBVal use, VMap bmap);
+        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
+        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
         // destructor for DFF
         ~DFF();
 

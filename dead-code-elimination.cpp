@@ -37,8 +37,8 @@ namespace {
     
   }
 
-  BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out, 
-    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
+  BitVector updateDepGen(Instruction *I, BitVector gen, BitVector out, 
+    IVal lhs, IVal rhs, IVal use, VMap bmap) {
 
     // BitVector this_gen(gen.size(), false);
 
@@ -53,11 +53,11 @@ namespace {
     return gen;
   }
 
-  BitVector updateDepKill(BasicBlock *B, BitVector kill, BitVector out, 
-    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
+  BitVector updateDepKill(Instruction *I, BitVector kill, BitVector out, 
+    IVal lhs, IVal rhs, IVal use, VMap bmap) {
     
-    BitVector this_lhs = lhs[B];
-    BitVector this_rhs = rhs[B];
+    BitVector this_lhs = lhs[I];
+    BitVector this_rhs = rhs[I];
     unsigned size  = this_rhs.size();
 
     Value* rev_mapping[bmap.size()];
@@ -76,9 +76,9 @@ namespace {
 
       if (this_lhs[i] == 1 && out[i] == 0) {
 
-        Instruction *I = dyn_cast<Instruction>(rev_mapping[i]);
+        Instruction *X = dyn_cast<Instruction>(rev_mapping[i]);
         // go over instruction args
-        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
+        for (User::op_iterator op = X->op_begin(), opE = X->op_end(); op != opE; ++op) {
 
           Value* val = *op;
 
@@ -348,28 +348,33 @@ namespace {
 
         outs () << "==============" + bName + "==============" << "\n";
 
-        outs () << "\nIN: \n";
-        print_val(in[&B], rev_mapping);
 
-        outs () << "\n" << "gen" << "\n";
-        print_val(gen[&B], rev_mapping);
+        for (Instruction &I : B) {
 
-        outs () << "\n" << "kill" << "\n";
-        print_val(kill[&B], rev_mapping);
+          
+          outs () << "\nIN: \n";
+          print_val(in[&I], rev_mapping);
 
-        outs () << "\nOUT: \n";
-        print_val(out[&B], rev_mapping);
+          outs () << "\n" << "gen" << "\n";
+          print_val(gen[&I], rev_mapping);
 
-        outs () << "\nLHS: \n";
-        print_val(glob_lhs[&B], rev_mapping);
+          outs () << "\n" << "kill" << "\n";
+          print_val(kill[&I], rev_mapping);
 
-        outs () << "\nRHS: \n";
-        print_val(glob_rhs[&B], rev_mapping);
+          outs () << "\nOUT: \n";
+          print_val(out[&I], rev_mapping);
 
-        outs () << "\nUSE: \n";
-        print_val(glob_use[&B], rev_mapping);
+          outs () << "\nLHS: \n";
+          print_val(glob_lhs[&I], rev_mapping);
 
-        outs () << "\n====================================" << "\n";
+          outs () << "\nRHS: \n";
+          print_val(glob_rhs[&I], rev_mapping);
+
+          outs () << "\nUSE: \n";
+          print_val(glob_use[&I], rev_mapping);
+
+          outs () << "\n====================================" << "\n";
+        }
 
       }
     }
@@ -392,15 +397,15 @@ namespace {
 
     // sets
     VMap bvec_mapping;
-    BBVal in;
-    BBVal out;
+    IVal in;
+    IVal out;
 
 
-    BBVal glob_lhs;
-    BBVal glob_rhs;
-    BBVal glob_use;
-    BBVal gen;
-    BBVal kill;
+    IVal glob_lhs;
+    IVal glob_rhs;
+    IVal glob_use;
+    IVal gen;
+    IVal kill;
 
   };
 
