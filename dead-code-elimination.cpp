@@ -22,7 +22,7 @@
 
 #include "llvm/IR/InstrTypes.h"
 
-#include "dataflow.h"
+#include "dataflow_dce.h"
 
 using namespace llvm;
 
@@ -164,8 +164,8 @@ namespace {
       if (name[0] == '%') {
 
         //do not process function calls or instructions that may be assignments
-        if (isa<CallInst>(I))                                                                     // THIS NEEDS TO BE HANDLED! VOID RETURN
-          return;
+        if (isa<CallInst>(I))                                                                     
+          return b;                                                                               // EMPTY SET
 
 
         // go over instruction args
@@ -211,7 +211,7 @@ namespace {
 
         }
       }
-      
+
       return b;
     }
 
@@ -292,30 +292,37 @@ namespace {
         // Lets go through each instruction. 
         // After everything is done, whatever is left is the relevant gen and kill for that block
 
-        BitVector genSet(size, false);
+        for (Instruction &I : B){
 
-        BitVector lhs = populate_lhs(&B);
-        BitVector rhs = populate_rhs(&B);
-        BitVector use = populate_use(&B);
+          BitVector genSet(size, false);
+          BitVector lhs(size, false);
+          BitVector rhs(size, false);
+          BitVector use(size, false);
 
-        // ?
-        glob_lhs.insert({&B, lhs});
-        glob_rhs.insert({&B, rhs});
-        glob_use.insert({&B, use});
+          BitVector lhs = populate_lhs(&I);
+          BitVector rhs = populate_rhs(&I);
+          BitVector use = populate_use(&I);
+
+          // ?
+          glob_lhs.insert({&I, lhs});
+          glob_rhs.insert({&I, rhs});
+          glob_use.insert({&I, use});
 
 
-        BitVector comp_rhs = rhs.flip();
-        genSet = set_intersection(lhs, comp_rhs);
+          BitVector comp_rhs = rhs.flip();                                // STILL USING FLIP??
+          genSet = set_intersection(lhs, comp_rhs);
 
-        //added for use
-        // BitVector comp_use = use.flip();
-        // genSet = set_intersection(genSet, comp_use);
+          //added for use
+          // BitVector comp_use = use.flip();
+          // genSet = set_intersection(genSet, comp_use);
 
-        // This is constant kill. Dependent kill will be updated during actual analysis
-        BitVector killSet(glob_use[&B]);
+          // This is constant kill. Dependent kill will be updated during actual analysis
+          BitVector killSet(glob_use[&I]);
 
-        gen.insert({&B, genSet});
-        kill.insert({&B, killSet});
+          gen.insert({&I, genSet});
+          kill.insert({&I, killSet});
+
+        }
 
       }
 
