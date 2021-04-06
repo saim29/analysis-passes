@@ -1,5 +1,5 @@
 INC=-I/usr/local/include/
-all: dominators.so dead-code-elimination.so loop-invariant-code-motion.so
+all: dominators.so dead-code-elimination.so loop-invariant-code-motion.so dataflow_dce.so
 
 CXXFLAGS = -rdynamic $(shell llvm-config --cxxflags) $(INC) -g -O0 -fPIC
 

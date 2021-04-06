@@ -31,14 +31,14 @@ namespace {
   BitVector transfer_function(BitVector out, BitVector gen, BitVector kill) {
 
     // Basic transfer function equaton here
-    BitVector intermediate = set_diff(out, kill);
-    return set_union(intermediate, gen);
+    BitVector intermediate = set_diff_dce(out, kill);
+    return set_union_dce(intermediate, gen);
     
     
   }
 
-  BitVector updateDepGen(Instruction *I, BitVector gen, BitVector out, 
-    IVal lhs, IVal rhs, IVal use, VMap bmap) {
+  BitVector updateDepGen(BasicBlock *B, BitVector gen, BitVector out, 
+    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
 
     // BitVector this_gen(gen.size(), false);
 
@@ -53,11 +53,11 @@ namespace {
     return gen;
   }
 
-  BitVector updateDepKill(Instruction *I, BitVector kill, BitVector out, 
-    IVal lhs, IVal rhs, IVal use, VMap bmap) {
+  BitVector updateDepKill(BasicBlock *B, BitVector kill, BitVector out, 
+    BBVal lhs, BBVal rhs, BBVal use, VMap bmap) {
     
-    BitVector this_lhs = lhs[I];
-    BitVector this_rhs = rhs[I];
+    BitVector this_lhs = lhs[B];
+    BitVector this_rhs = rhs[B];
     unsigned size  = this_rhs.size();
 
     Value* rev_mapping[bmap.size()];
@@ -76,9 +76,9 @@ namespace {
 
       if (this_lhs[i] == 1 && out[i] == 0) {
 
-        Instruction *X = dyn_cast<Instruction>(rev_mapping[i]);
+        Instruction *I = dyn_cast<Instruction>(rev_mapping[i]);
         // go over instruction args
-        for (User::op_iterator op = X->op_begin(), opE = X->op_end(); op != opE; ++op) {
+        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
 
           Value* val = *op;
 
@@ -139,76 +139,88 @@ namespace {
       }
     }
 
-    BitVector populate_lhs(Instruction *I) {
+    BitVector populate_lhs(BasicBlock *B) {
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
+      
 
-      StringRef name = getShortValueName(I);
-      if (name[0] == '%') {
+      for (Instruction &I : *B) {
+
+          StringRef name = getShortValueName(&I);
+          if (name[0] == '%') {
             
-        unsigned ind = bvec_mapping[I];
-        b[ind] = 1;
-
-      }
-
-      return b;
-    }
-
-    BitVector populate_rhs(Instruction *I) {
-
-      int size = bvec_mapping.size();
-      BitVector b(size, false);
-
-      StringRef name = getShortValueName(I);
-      if (name[0] == '%') {
-
-        //do not process function calls or instructions that may be assignments
-        if (isa<CallInst>(I))                                                                     
-          return b;                                                                               // EMPTY SET
-
-
-        // go over instruction args
-        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
-
-          Value* val = *op;
-          
-          // only map arguments that are coming from potential definitions
-          // ignore any other arguments i.e constants etc
-          if (Instruction *inst = dyn_cast<Instruction>(val)) {
-
-            unsigned ind = bvec_mapping[inst];
+            unsigned ind = bvec_mapping[&I];
             b[ind] = 1;
-          }
-        }
-      }
 
+          }
+      } 
       return b;
     }
 
-    BitVector populate_use(Instruction *I){
+    BitVector populate_rhs(BasicBlock *B) {
+
+
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
 
-      if (getShortValueName(I)[0] != '%' || isa<CallInst>(I)) {
 
-        // do not process branchInsts
-        // if (I.isTerminator())
-        //   continue;
+      for (Instruction &I : *B) {
 
-        // go over instruction args
-        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
+          StringRef name = getShortValueName(&I);
+          if (name[0] == '%') {
+
+            //do not process function calls or instructions that may be assignments
+            if (isa<CallInst>(&I))
+              continue;
+
+
+            // go over instruction args
+            for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+
+              Value* val = *op;
+              
+              // only map arguments that are coming from potential definitions
+              // ignore any other arguments i.e constants etc
+              if (Instruction *inst = dyn_cast<Instruction>(val)) {
+
+                unsigned ind = bvec_mapping[inst];
+                b[ind] = 1;
+              }
+            }
+          }
+      }
+      return b;
+    }
+
+    BitVector populate_use(BasicBlock *B){
+
+      int size = bvec_mapping.size();
+      BitVector b(size, false);
+
+
+      for (Instruction &I : *B) {
+
+        if (getShortValueName(&I)[0] != '%' || isa<CallInst>(&I)) {
+
+          // do not process branchInsts
+          // if (I.isTerminator())
+          //   continue;
+
+          // go over instruction args
+          for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
 
             Value* val = *op;
               
             // only map arguments if they are definitions otherwise ignore
-          if (Instruction *inst = dyn_cast<Instruction>(val)) {
+            if (Instruction *inst = dyn_cast<Instruction>(val)) {
 
-            unsigned ind = bvec_mapping[inst];
-            b[ind] = 1;
+              unsigned ind = bvec_mapping[inst];
+              b[ind] = 1;
+            }
+
           }
-
         }
       }
 
@@ -292,37 +304,30 @@ namespace {
         // Lets go through each instruction. 
         // After everything is done, whatever is left is the relevant gen and kill for that block
 
-        for (Instruction &I : B){
+        BitVector genSet(size, false);
 
-          BitVector genSet(size, false);
-          BitVector lhs(size, false);
-          BitVector rhs(size, false);
-          BitVector use(size, false);
+        BitVector lhs = populate_lhs(&B);
+        BitVector rhs = populate_rhs(&B);
+        BitVector use = populate_use(&B);
 
-          BitVector lhs = populate_lhs(&I);
-          BitVector rhs = populate_rhs(&I);
-          BitVector use = populate_use(&I);
-
-          // ?
-          glob_lhs.insert({&I, lhs});
-          glob_rhs.insert({&I, rhs});
-          glob_use.insert({&I, use});
+        // ?
+        glob_lhs.insert({&B, lhs});
+        glob_rhs.insert({&B, rhs});
+        glob_use.insert({&B, use});
 
 
-          BitVector comp_rhs = rhs.flip();                                // STILL USING FLIP??
-          genSet = set_intersection(lhs, comp_rhs);
+        BitVector comp_rhs = rhs.flip();
+        genSet = set_intersection_dce(lhs, comp_rhs);
 
-          //added for use
-          // BitVector comp_use = use.flip();
-          // genSet = set_intersection(genSet, comp_use);
+        //added for use
+        // BitVector comp_use = use.flip();
+        // genSet = set_intersection(genSet, comp_use);
 
-          // This is constant kill. Dependent kill will be updated during actual analysis
-          BitVector killSet(glob_use[&I]);
+        // This is constant kill. Dependent kill will be updated during actual analysis
+        BitVector killSet(glob_use[&B]);
 
-          gen.insert({&I, genSet});
-          kill.insert({&I, killSet});
-
-        }
+        gen.insert({&B, genSet});
+        kill.insert({&B, killSet});
 
       }
 
@@ -348,33 +353,28 @@ namespace {
 
         outs () << "==============" + bName + "==============" << "\n";
 
+        outs () << "\nIN: \n";
+        print_val(in[&B], rev_mapping);
 
-        for (Instruction &I : B) {
+        outs () << "\n" << "gen" << "\n";
+        print_val(gen[&B], rev_mapping);
 
-          
-          outs () << "\nIN: \n";
-          print_val(in[&I], rev_mapping);
+        outs () << "\n" << "kill" << "\n";
+        print_val(kill[&B], rev_mapping);
 
-          outs () << "\n" << "gen" << "\n";
-          print_val(gen[&I], rev_mapping);
+        outs () << "\nOUT: \n";
+        print_val(out[&B], rev_mapping);
 
-          outs () << "\n" << "kill" << "\n";
-          print_val(kill[&I], rev_mapping);
+        outs () << "\nLHS: \n";
+        print_val(glob_lhs[&B], rev_mapping);
 
-          outs () << "\nOUT: \n";
-          print_val(out[&I], rev_mapping);
+        outs () << "\nRHS: \n";
+        print_val(glob_rhs[&B], rev_mapping);
 
-          outs () << "\nLHS: \n";
-          print_val(glob_lhs[&I], rev_mapping);
+        outs () << "\nUSE: \n";
+        print_val(glob_use[&B], rev_mapping);
 
-          outs () << "\nRHS: \n";
-          print_val(glob_rhs[&I], rev_mapping);
-
-          outs () << "\nUSE: \n";
-          print_val(glob_use[&I], rev_mapping);
-
-          outs () << "\n====================================" << "\n";
-        }
+        outs () << "\n====================================" << "\n";
 
       }
     }
@@ -397,15 +397,15 @@ namespace {
 
     // sets
     VMap bvec_mapping;
-    IVal in;
-    IVal out;
+    BBVal in;
+    BBVal out;
 
 
-    IVal glob_lhs;
-    IVal glob_rhs;
-    IVal glob_use;
-    IVal gen;
-    IVal kill;
+    BBVal glob_lhs;
+    BBVal glob_rhs;
+    BBVal glob_use;
+    BBVal gen;
+    BBVal kill;
 
   };
 

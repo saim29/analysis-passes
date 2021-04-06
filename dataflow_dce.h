@@ -30,9 +30,9 @@ namespace llvm {
     // abstraction here.
 
     // set operations for bitvectors
-    BitVector set_union(BitVector b1, BitVector b2);
-    BitVector set_intersection(BitVector b1, BitVector b2);
-    BitVector set_diff(BitVector b1, BitVector b2);
+    BitVector set_union_dce(BitVector b1, BitVector b2);
+    BitVector set_intersection_dce(BitVector b1, BitVector b2);
+    BitVector set_diff_dce(BitVector b1, BitVector b2);
 
     // can add support for more meet operators here
     enum meetOperator {
@@ -47,23 +47,14 @@ namespace llvm {
         NON_SEPARABLE
     };
 
-    /*typedef DenseMap <BasicBlock*, BitVector> BBVal;
-    typedef std::map <Value*, unsigned> VMap;
-    typedef std::map <Expression*, unsigned> EMap;*/
-    typedef std::vector<BasicBlock*> BBList;
-    /*typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
-    typedef BitVector(*genKillUpdaterTy) (BasicBlock*, BitVector, BitVector, BBVal, BBVal, BBVal, VMap);*/
-
-
     typedef DenseMap <Instruction*, BitVector> IVal;
     typedef std::map <Value*, unsigned> VMap;
-    typedef std::map <Expression*, unsigned> EMap;
     typedef std::vector<Instruction*> IList;
     typedef BitVector (*transferFuncTy) (BitVector, BitVector, BitVector);
     typedef BitVector(*genKillUpdaterTy) (Instruction*, BitVector, BitVector, IVal, IVal, IVal, VMap);
     
 
-    class DFF {
+    class DFF_DCE {
 
         private:
 
@@ -82,7 +73,7 @@ namespace llvm {
         IVal glob_rhs; 
         IVal glob_use;
         
-        // gen and kill sets; Should be calculated by the specific analysis and passed to DFF
+        // gen and kill sets; Should be calculated by the specific analysis and passed to DFF_DCE
         IVal gen;
         IVal kill;
 
@@ -94,16 +85,23 @@ namespace llvm {
         BitVector out_entry;
 
         BitVector (*transferFunc)(BitVector, BitVector, BitVector); // function pointer to the transfer function of the analysis class
+        BitVector (*updateDepGen)(Instruction *B, BitVector gen, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
+        BitVector (*updateDepKill)(Instruction *B, BitVector kill, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
 
         BitVector applyMeet(BitVector b1, BitVector b2); //function to apply meet 
 
         // function to generate possible return blocks
-        BBList getPossibleExitBlocks();
+        IList getPossibleExitInsts();
+
+        std::vector<BasicBlock*> getPossibleExitBlocks();
+
+        // traverse blocks
+        void traverseBlockBackwards(BasicBlock *B);
 
         public:
-        // constructors for DFF
-        DFF();
-        DFF(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
+        // constructors for DFF_DCE
+        DFF_DCE();
+        DFF_DCE(Function *F, bool direction, meetOperator meetOp, unsigned bitvec_size, transferFuncTy transferFunc,
            bool boundary_val, separability sep, genKillUpdaterTy depGen, genKillUpdaterTy depKill);
 
         // methods to set specific sets
@@ -113,11 +111,9 @@ namespace llvm {
         void set_bvec_mapping(VMap mapping);
 
         // Sets for faint variable analysis
-
         void setLhs(IVal glob_lhs);
         void setRhs(IVal glob_rhs);
         void setUse(IVal glob_use);
-
 
         void setBoundary(bool direction, bool boundary_val, unsigned bitvec_size);
 
@@ -125,62 +121,12 @@ namespace llvm {
         IVal getIN();
         IVal getOUT();
 
-        // function to print all results on convergence
-        template<class A> 
-        void printRes(std::map<A, unsigned> mapping, StringRef label1, StringRef label2);
-
-        // overloaded print functions
-        void print(BitVector b, Value *rev_mapping[]); 
-
-        
-        BitVector (*updateDepGen)(BasicBlock *B, BitVector gen, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
-        BitVector (*updateDepKill)(BasicBlock *B, BitVector kill, BitVector out, IVal lhs, IVal rhs, IVal use, VMap bmap);
-        // destructor for DFF
-        ~DFF();
+        // destructor for DFF_DCE
+        ~DFF_DCE();
 
         void runAnalysis(); // traversal of basicblocks based on the direction boolean
 
     };
-
-
-// print functions moved here. C++ requirement
-  template<class A> 
-  void DFF::printRes(std::map<A, unsigned> mapping, StringRef label1, StringRef label2) {
-
-    A rev_mapping[mapping.size()];
-
-    for (auto ele : mapping) {
-
-      unsigned ind = ele.second;
-      A val = ele.first;
-
-      rev_mapping[ind] = val;
-
-    }
-
-    for (BasicBlock &B: *F) {
-
-      StringRef bName = B.getName();
-
-      outs () << "==============" + bName + "==============" << "\n";
-
-      outs () << "\nIN: \n";
-      print(in[&B], rev_mapping);
-
-      outs () << "\n" << label1 << "\n";
-      print(gen[&B], rev_mapping);
-
-      outs () << "\n" << label2 << "\n";
-      print(kill[&B], rev_mapping);
-
-      outs () << "\nOUT: \n";
-      print(out[&B], rev_mapping);
-
-      outs () << "\n====================================" << "\n";
-
-    }
-
-  }
 
 
 }
