@@ -79,16 +79,16 @@ namespace {
 
     if(this_out[ind] == 0 && this_lhs[ind] == 1) {
 
-      I->dump();
+      // I->dump();
 
-      outs () << "killed\n";
+      // outs () << "killed\n";
       for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
 
         Value* val = *op;
 
         if (isa<Instruction>(val)) {
 
-          val->dump();
+          // val->dump();
           unsigned ind_op = bmap[val];
           this_kill[ind_op] = 1;
         }
@@ -244,19 +244,44 @@ namespace {
       out = dff.getOUT();
 
       // print results for debugging
-      print_faint_vals(F);
+      //print_faint_vals(F);
 
-      for (BasicBlock &B : F) {
 
-        for (Instruction &I : B) {
 
-          if (!isLive(&I)) {
-        
-            //I.dump();
-            
+      /*
+        calculate instructions to delete
+      */
+
+      std::vector<Instruction*> toDel;
+
+      // traverse in reverse post order
+      for (po_iterator<BasicBlock*> BB = po_begin(&F.getEntryBlock()), BBEnd = po_end(&F.getEntryBlock()); BB != BBEnd; ++BB) {
+
+        for (BasicBlock::reverse_iterator it = BB->rbegin(); it != BB->rend(); ++it) {
+
+          Instruction *candidate = &*it;
+          
+          if (isLive(candidate))
+            continue;
+
+          // check if it is in out set
+          BitVector candidate_out = out[candidate];
+          unsigned ind = bvec_mapping[candidate];
+
+          if (candidate_out[ind]) {
+            toDel.push_back(candidate);
           }
 
         }
+
+      }
+
+      // delete
+      for(auto ele: toDel) {
+
+        // don't delete instructions that have persistent uses
+        if (ele->getNumUses() == 0)
+          ele->eraseFromParent();
 
       }
 
