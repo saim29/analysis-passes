@@ -139,91 +139,79 @@ namespace {
       }
     }
 
-    BitVector populate_lhs(BasicBlock *B) {
+    BitVector populate_lhs(Instruction *I) {
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
-      
 
-      for (Instruction &I : *B) {
-
-          StringRef name = getShortValueName(&I);
-          if (name[0] == '%') {
+      StringRef name = getShortValueName(I);
+      if (name[0] == '%') {
             
-            unsigned ind = bvec_mapping[&I];
-            b[ind] = 1;
+        unsigned ind = bvec_mapping[I];
+        b[ind] = 1;
 
-          }
-      } 
-      return b;
-    }
-
-    BitVector populate_rhs(BasicBlock *B) {
-
-
-
-      int size = bvec_mapping.size();
-      BitVector b(size, false);
-
-
-      for (Instruction &I : *B) {
-
-          StringRef name = getShortValueName(&I);
-          if (name[0] == '%') {
-
-            //do not process function calls or instructions that may be assignments
-            if (isa<CallInst>(&I))
-              continue;
-
-
-            // go over instruction args
-            for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
-
-              Value* val = *op;
-              
-              // only map arguments that are coming from potential definitions
-              // ignore any other arguments i.e constants etc
-              if (Instruction *inst = dyn_cast<Instruction>(val)) {
-
-                unsigned ind = bvec_mapping[inst];
-                b[ind] = 1;
-              }
-            }
-          }
       }
+
       return b;
     }
 
-    BitVector populate_use(BasicBlock *B){
+    BitVector populate_rhs(Instruction *I) {
 
       int size = bvec_mapping.size();
       BitVector b(size, false);
 
+      StringRef name = getShortValueName(I);
+      if (name[0] == '%') {
 
-      for (Instruction &I : *B) {
+        //do not process function calls or instructions that may be assignments
+        if (isa<CallInst>(I))                                                                     // THIS NEEDS TO BE HANDLED! VOID RETURN
+          return;
 
-        if (getShortValueName(&I)[0] != '%' || isa<CallInst>(&I)) {
 
-          // do not process branchInsts
-          // if (I.isTerminator())
-          //   continue;
+        // go over instruction args
+        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
 
-          // go over instruction args
-          for (User::op_iterator op = I.op_begin(), opE = I.op_end(); op != opE; ++op) {
+          Value* val = *op;
+          
+          // only map arguments that are coming from potential definitions
+          // ignore any other arguments i.e constants etc
+          if (Instruction *inst = dyn_cast<Instruction>(val)) {
 
-            Value* val = *op;
-              
-            // only map arguments if they are definitions otherwise ignore
-            if (Instruction *inst = dyn_cast<Instruction>(val)) {
-
-              unsigned ind = bvec_mapping[inst];
-              b[ind] = 1;
-            }
-
+            unsigned ind = bvec_mapping[inst];
+            b[ind] = 1;
           }
         }
       }
 
+      return b;
+    }
+
+    BitVector populate_use(Instruction *I){
+
+      int size = bvec_mapping.size();
+      BitVector b(size, false);
+
+      if (getShortValueName(I)[0] != '%' || isa<CallInst>(I)) {
+
+        // do not process branchInsts
+        // if (I.isTerminator())
+        //   continue;
+
+        // go over instruction args
+        for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
+
+            Value* val = *op;
+              
+            // only map arguments if they are definitions otherwise ignore
+          if (Instruction *inst = dyn_cast<Instruction>(val)) {
+
+            unsigned ind = bvec_mapping[inst];
+            b[ind] = 1;
+          }
+
+        }
+      }
+      
       return b;
     }
 
