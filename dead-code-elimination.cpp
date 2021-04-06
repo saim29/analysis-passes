@@ -57,44 +57,35 @@ namespace {
   BitVector updateDepKill(Instruction *I, BitVector kill, BitVector out, 
     IVal lhs, IVal rhs, IVal use, VMap bmap) {
     
-    // BitVector this_lhs = lhs[I];
-    // BitVector this_rhs = rhs[I];
-    // unsigned size  = this_rhs.size();
+    BitVector this_lhs = lhs[I];
+    BitVector this_rhs = rhs[I];
+    BitVector this_kill = kill;
+    BitVector this_out = out;
+    BitVector this_use  = use[I]; 
+    unsigned size  = this_rhs.size();
 
-    // Value* rev_mapping[bmap.size()];
+    //Value* rev_mapping[bmap.size()];
 
-    // for (auto ele : bmap) {
+    //for (auto ele : bmap) {
 
-    //   unsigned ind = ele.second;
-    //   Value* val = ele.first;
+    // unsigned ind = ele.second;
+    // Value* val = ele.first;
 
-    //   rev_mapping[ind] = val;
+    // rev_mapping[ind] = val;
 
-    // }
+    //}
 
+    unsigned ind = bmap[I];
 
-    // for(int i=0; i< size; i++) {
+    if(this_out[ind] == 0 && this_lhs[ind] == 1) {
+      for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
 
-    //   if (this_lhs[i] == 1 && out[i] == 0) {
+        Value* val = *op;
+        this_kill[ind] = 1;
+      }
+    }
+    return this_kill;
 
-    //     Instruction *I = dyn_cast<Instruction>(rev_mapping[i]);
-    //     // go over instruction args
-    //     for (User::op_iterator op = I->op_begin(), opE = I->op_end(); op != opE; ++op) {
-
-    //       Value* val = *op;
-
-    //       unsigned ind = bmap[val];
-    //       kill[i] = 1;
-          
-    //     }
-    //     // // update rhs of the specific var
-    //     // if (this_rhs[i] == 1) {
-    //     //   kill[i] = 1;
-    //     // }
-
-    //   }
-    // }
-    // return kill;
   }
 
 
