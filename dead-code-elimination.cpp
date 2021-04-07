@@ -244,7 +244,7 @@ namespace {
       out = dff.getOUT();
 
       // print results for debugging
-      //print_faint_vals(F);
+      print_faint_vals(F);
 
 
 
