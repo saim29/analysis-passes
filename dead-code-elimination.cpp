@@ -276,14 +276,23 @@ namespace {
 
       }
 
+      outs() << "\n\n--------- FAINT ---------------\n";
       // delete
       for(auto ele: toDel) {
 
         // don't delete instructions that have persistent uses
-        if (ele->getNumUses() == 0)
+        if (ele->getNumUses() == 0) {
+
+          outs () << "Deleting faint instruction : ";
+          ele->dump();
           ele->eraseFromParent();
 
+        }
+
       }
+
+      outs() << "--------- FAINT END ---------------\n\n";
+
 
       return false;
     }
