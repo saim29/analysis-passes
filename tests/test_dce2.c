@@ -4,22 +4,24 @@
 
 */
 int main(){
-    int r1, r2, r3;
+    int a, b, c;
 
-    r1 = 1;
-    r2 = 2;
-    r3 = 3;
+    a = 1;
+    b = 2;
+    c = 3;
 
-    if(r2){
-        r1 = 5;
+    if(a)
+    {
+        a = 5;
     }
-    else{
-        r1 = 6;
+    else
+    {
+        a = 6;
     }
 
-    r1 = r2 + 1;
-    r2 = r2 + 2;
-    r3 = r1 + r3;
+    a = b + 1;
+    b = b + 2;
+    c = a + c;
 
-    return r3;
+    return c;
 }
