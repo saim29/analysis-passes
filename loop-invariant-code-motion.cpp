@@ -38,7 +38,8 @@ namespace {
 
     virtual bool runOnLoop(Loop *L, LPPassManager &LPM) {
 
-      outs() << "\n\nRunning on new loop ... \n\n";
+      StringRef l_name = L->getName();
+      outs() << "\n\nRunning on loop " + l_name + "\n";
 
       LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
       domTree = &getAnalysis<dominators>();
@@ -67,7 +68,7 @@ namespace {
         if (!L->isRotatedForm()) {
 
           //update landingPad to the newly created one if loop is not in  do; while form
-          //landingPad = landingPadTransform(L);
+          landingPad = landingPadTransform(L);
           modified = true;
           
         }
@@ -122,70 +123,76 @@ namespace {
 
       BasicBlock *landingPad = NULL;
 
-      // split the preHeader block
+      // split the preHeader . Wblock
       //landingPad = SplitBlock(preHeader, &preHeader->back());
 
       landingPad = SplitEdge(preHeader, header);
 
-      landingPad->dump();
+      //landingPad->dump();
 
-      // CmpInst *preHeader_branch = CmpInst::Create(cond->getOpcode(), cond->getPredicate(), left, right, Twine("cond"), preHeader->getTerminator());     
+      CmpInst *preHeader_branch = CmpInst::Create(cond->getOpcode(), cond->getPredicate(), left, right, Twine("cond"), preHeader->getTerminator());     
 
-      // // delete the previous terminator
-      // preHeader->getTerminator()->eraseFromParent();
+      // delete the previous terminator
+      preHeader->getTerminator()->eraseFromParent();
 
-      // // add the new terminator
-      // BranchInst *preHeader_terminator = BranchInst::Create(landingPad, exit, preHeader_branch, preHeader);
+      // add the new terminator
+      BranchInst *preHeader_terminator = BranchInst::Create(landingPad, exit, preHeader_branch, preHeader);
 
-      // // get all phi instructions within the header block
-      // std::vector<Instruction*> phiList;
-      // for (BasicBlock::iterator it = BasicBlock::iterator(header->front()); it!=BasicBlock::iterator(header->getFirstNonPHI()); it++) {
+      // get all phi instructions within the header block
+      std::vector<Instruction*> phiList;
+      for (BasicBlock::iterator it = BasicBlock::iterator(header->front()); it!=BasicBlock::iterator(header->getFirstNonPHI()); it++) {
 
-      //   phiList.push_back(&*it);
+        phiList.push_back(&*it);
 
-      // }
+      }
 
-      // BasicBlock *postExit = SplitBlock(exit, &exit->back());
+      BasicBlock *postExit = SplitBlock(exit, &exit->back());
 
 
-      // Instruction *insertBefore = &postExit->front();
-      // std::vector<Instruction*> newPhiList;
-      // for (auto phi : phiList) {
+      Instruction *insertBefore = &exit->front();
+      std::vector<Instruction*> newPhiList;
+      for (auto phi : phiList) {
 
-      //   PHINode *phi_node = dyn_cast<PHINode>(phi);
+        PHINode *phi_node = dyn_cast<PHINode>(phi);
 
-      //   Type *ty = phi->getType();
-      //   const unsigned nVal = dyn_cast<PHINode>(phi)->getNumIncomingValues();
-      //   PHINode *phi_new = PHINode::Create(ty, nVal, Twine("phi_new"), insertBefore);
+        Type *ty = phi->getType();
+        const unsigned nVal = dyn_cast<PHINode>(phi)->getNumIncomingValues();
+        PHINode *phi_new = PHINode::Create(ty, nVal, Twine("phi_new"), insertBefore);
 
-      //   phi_new->addIncoming(phi_node->getIncomingValueForBlock(landingPad), preHeader);
-      //   phi_new->addIncoming(phi_node, header);
+        phi_new->addIncoming(phi_node->getIncomingValueForBlock(landingPad), preHeader);
+        phi_new->addIncoming(phi_node, header);
 
-      //   newPhiList.push_back(phi_new);
-      //   //ReplaceInstWithValue(exit->getInstList(), phi_node, phi_new);
-      //   //BasicBlock::iterator phi_itr = BasicBlock::iterator(phi_node);
+        newPhiList.push_back(phi_new);
+        //ReplaceInstWithValue(exit->getInstList(), phi_node, phi_new);
+        //BasicBlock::iterator phi_itr = BasicBlock::iterator(phi_node);
 
-      //   //ReplaceInstWithValue(exit->getInstList(), phi_itr, phi_new);
+        //ReplaceInstWithValue(exit->getInstList(), phi_itr, phi_new);
 
-      //   // for (auto &U : phi->uses()) {
+        // replace all future uses
+        // for (auto &U : phi->uses()) {
           
-      //   // }
+        //   // replace use if dominated
+        //   if (Instruction *i = dyn_cast<Instruction>(U.getUser())) {
 
-      //   //phi_node->replaceAllUsesWith(phi_new);
-      // }
+        //     if (domTree->dominates(phi_new, i)) {
 
-      // preHeader->dump();
+        //       //replace operand of i for which i.op == phi
+        //       for (User::op_iterator op = i->op_begin(), opE = i->op_end(); op!=opE; op++) {
 
-      // landingPad->dump();
+                
+        //         if (dyn_cast<Value>(op) == dyn_cast<Value>(phi)) {
+        //           // i->setOperand(operand, phi_new);
+        //           //*op = (Value *) phi_new; 
+        //         }
+        //       }
+        //     }
 
-      // header->dump();
+        //   }  
 
-      // exit->dump();
+        // }
 
-      // postExit->dump();
-
-
-      //exiting->dump();
+        //phi_node->replaceAllUsesWith(phi_new);
+      }
 
       return landingPad;
 
@@ -362,26 +369,6 @@ namespace {
         return false;
       else
         return true;
-    }
-
-    static void replaceAllUsesAfter(Instruction *after, Value *toReplace, Value *toReplaceWith) {
-
-      //traverse all instructions
-      //traverse all BasicBlocks
-
-      std::queue<BasicBlock> bfs;
-      DenseSet<BasicBlock*> visited;
-
-      BasicBlock *b = after->getParent();
-
-      BasicBlock::iterator b_it= BasicBlock::iterator(after);
-
-      for (auto it = b_it; it!=b->end(); it++) {
-
-        //check for uses
-
-      }
-
     }
 
   };

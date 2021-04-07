@@ -32,7 +32,7 @@ namespace {
       unsigned size_bitvec = BBMapping.size();
 
       //initialize data flow framework
-      DFF dff(&F, false, INTERSECTION, size_bitvec, &transfer_function, false);
+      DFF dff(&F, false, INTERSECTION, size_bitvec, &transfer_function, false, SEPARABLE, NULL, NULL);
 
       // compute use and def sets here
       populate_add_and_sub(F);
