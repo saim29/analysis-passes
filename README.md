@@ -34,14 +34,14 @@ LLVM passes for dominators, dead code elimination and LICM utilizing framework (
 1. Change directory to tests/- `cd tests/`
 2. Use Makefile in the following manner
 
-    `make $name_$pass`
+    `make $name_$pass.bc`
     
     - `$name` - Name of the source file without `.c` extension
     - `$pass` - Name of the pass. Possible: `dce`, `licm`
 
     Example build
 
-    `make test_dce1_dce` to build `test_dce1.c`
+    `make test_dce1_dce.bc` to build `test_dce1.c`
 
    
 3. Example output
@@ -287,13 +287,18 @@ USE:
 
 
 ====================================
-opt -dot-cfg test_dce1_dce.bc
-Writing '.main.dot'...
-dot -Tpng .main.dot -o main.png
+
+
+--------- FAINT ---------------
+Deleting faint instruction :   %add2 = add nsw i32 5, 5
+Deleting faint instruction :   %add1 = add nsw i32 %add, %mul
+Deleting faint instruction :   %mul = mul nsw i32 25, 4
+--------- FAINT END ---------------
+
 rm test_dce1.bc
 ```
 
 
 # NOTE
 
-We also generate dot and png files of the resultant bitcode files for visualization. They will be available in the `tests/` folder.
+You can also generate dot and png files of the resultant bitcode files for visualization by editing the Makefile in `tests` and uncommenting the relevant lines. 
